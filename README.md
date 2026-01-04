@@ -92,8 +92,10 @@ Librerías: Chart.js para visualización de datos
 
 ## 📜 Licencia
 
-Este proyecto está bajo la Licencia MIT - consulta el archivo [LICENSE](LICENSE) para más detalles.
+Este proyecto está bajo la Licencia MIT -
 
 ---
 
 **¿Preguntas?** ¡Únete a nuestro Discord! [https://discord.gg/jcmwhfyG](https://discord.gg/jcmwhfyG)
+
+Prueba online en [gm-2000.web.app](https://gm-2000.web.app/) 
