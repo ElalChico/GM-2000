@@ -1,5 +1,3 @@
-Tienes toda la razón, perdón por las suposiciones incorrectas. Aquí está el README corregido basado exclusivamente en tu código:
-
 # ♔ GM2000 ♚ - Sistema de Entrenamiento de Ajedrez para Jugadores Avanzados
 
 ## 📌 Descripción
