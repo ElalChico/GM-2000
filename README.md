@@ -32,7 +32,7 @@ GM2000 es un sistema de entrenamiento de ajedrez diseñado específicamente para
   - Análisis estadístico persistente entre sesiones
 
 ## 🚀 Cómo Usar
-0. **Instalación (disponible en https://mega.nz/file/SXJRRCzZ#G_hXm8kTdWG9OxglpPL0LnJU5bZZQ3fgrHJlJ96A9qs (MEGA)
+0. **Instalación: .EXE (disponible en https://mega.nz/file/SXJRRCzZ#G_hXm8kTdWG9OxglpPL0LnJU5bZZQ3fgrHJlJ96A9qs (MEGA) Descomprimir, ejecutar el setup, seeguir los pasos de instalacion y listo.
 1. **Versión Web**: 
    - Visita el enlace de la aplicación online
    - No requiere instalación ni registro
