@@ -10,6 +10,8 @@ GM2000 es un sistema de entrenamiento de ajedrez diseñado específicamente para
 - **Modos de juego especializados**:
   - Modo Entrenamiento personalizable (configura tus piezas y las del oponente)
   - Modo Libre para análisis de posiciones sin restricciones
+  - Dos modos de freestyle
+  - Piezas invisibles (para entrenamiento de memoria
   - Partidas con cronómetro (Bullet, Blitz, Rapid)
 - **Sistema de análisis visual**:
   - Detección de jaque en tiempo real
@@ -30,7 +32,7 @@ GM2000 es un sistema de entrenamiento de ajedrez diseñado específicamente para
   - Análisis estadístico persistente entre sesiones
 
 ## 🚀 Cómo Usar
-
+0. **Instalación (disponible en https://mega.nz/file/SXJRRCzZ#G_hXm8kTdWG9OxglpPL0LnJU5bZZQ3fgrHJlJ96A9qs (MEGA)
 1. **Versión Web**: 
    - Visita el enlace de la aplicación online
    - No requiere instalación ni registro
