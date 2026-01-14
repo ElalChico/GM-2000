@@ -71,13 +71,7 @@ Si encuentras algún problema o comportamiento inesperado, únete a nuestro serv
 
 ### Compartir Experiencias
 También puedes compartir tu experiencia usando la aplicación online en nuestro Discord. ¡Tus comentarios son valiosos para mejorar la interfaz y funcionalidades!
-
-## 📱 Próximas Versiones
-
-Una vez que se hayan corregido todos los errores reportados por la comunidad y la aplicación esté completamente estable, se lanzarán versiones offline:
-
-- **Versión APK** para dispositivos Android
-- **Versión EXE** para Windows
+____________________________________________________________________________________________________________________________________________________________
 
 ¡Mantente atento a las actualizaciones en nuestro servidor de Discord!
 
