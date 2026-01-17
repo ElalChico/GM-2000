@@ -1,0 +1,3131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>♔ GM-2000 ♚ - Board de AutoEntrenamiento</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --light-sq: #818788; 
+            --dark-sq: #2e2f33;
+            --accent: #00f2ff; --enemy: #ee1708;
+            --bg: #050505; --panel: rgba(15, 15, 20, 0.98);
+            --sq-size: 60px;
+            --trans-config: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            --text-clock: #eee;
+        }
+        
+        /* FULLSCREEN */
+        :fullscreen header { display: none !important; }
+        :fullscreen #gameLayout { height: 100vh; padding: 0; }
+        :fullscreen { --sq-size: calc(88vh / 8); }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; outline: none; }
+        body {
+            background-color: var(--bg); color: #eee;
+            font-family: 'Segoe UI', 'Arial', 'Tahoma', 'Verdana', system-ui, sans-serif;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+            background-image: radial-gradient(circle at center, #1a1a2e 0%, #000 100%);
+        }
+
+                header {
+                    width: 100%; padding: 10px 25px; display: flex; justify-content: center; align-items: center; position: relative;
+                    background: rgba(0,0,0,0.7); border-bottom: 1px solid #333; z-index: 100;
+                    font-family: 'Segoe UI', 'Arial', 'Tahoma', 'Verdana', system-ui, sans-serif;
+                }                        .header-logo { height: 100px; filter: none;}
+        /* ESTILOS DEL CREADOR (MEJORADOS) */
+        .creator-zone {
+            position: absolute;
+            left: 25px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+        }
+        .creator-text {
+            font-family: 'Segoe UI', 'Arial', 'Tahoma', 'Verdana', system-ui, sans-serif;
+            font-size: 13px;
+            color: #b0b0b0;
+            font-style: italic;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            padding: 2px 0;
+            border: none;
+            opacity: 1;
+        }
+        .github-link {
+            text-decoration: none;
+            color: #fff;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            margin-top: 4px;
+            transition: 0.2s;
+            border: 1px solid #444;
+            padding: 4px 12px;
+            border-radius: 4px;
+            background: #23272e;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            position: relative;
+        }
+        .github-link:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: #181c22;
+            text-decoration: underline;
+        }
+        /* Tooltip para Discord - FIXED CON FLEXBOX Y ALINEACIÓN IZQUIERDA */
+        .github-link[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            top: 100%;
+            left: 0;
+            transform: none;
+            background: #181c22;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 2px;
+            font-size: 14px;
+            white-space: normal;
+            width: 300px;
+            max-width: 90vw;
+            text-align: center;
+            border: 1px solid var(--accent);
+            z-index: 1000;
+            margin-top: 10px;
+            pointer-events: none;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            line-height: 1.4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            word-wrap: break-word;
+        }
+
+        #gameLayout {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            gap: 60px;
+            padding: 10px 40px 10px 40px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .main-center-zone {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 40px;
+        }
+
+        .clocks-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            position: static;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .master-rotation-hub { 
+            display: flex; flex-direction: row; align-items: center; gap: 20px;
+            transition: var(--trans-config); 
+        }
+        .master-rotation-hub.rotated { transform: rotate(180deg); }
+        .master-rotation-hub.rotated .clocks-container { transform: rotate(-180deg); }
+
+        .board-wrapper { position: relative; padding: 25px; background: #111; border: 1px solid #444; border-radius: 4px; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        
+        .board { 
+            display: grid; 
+            grid-template-columns: repeat(8, var(--sq-size)); 
+            grid-template-rows: repeat(8, var(--sq-size)); 
+            border: 2px solid #000; 
+            transition: var(--trans-config);
+        }
+        .square { 
+            width: 100%; height: 100%; 
+            display: flex; justify-content: center; align-items: center; 
+            position: relative; cursor: pointer; 
+        }
+        .sq-light { background-color: var(--light-sq); transition: background-color 0.3s; }
+        .sq-dark { background-color: var(--dark-sq); transition: background-color 0.3s; }
+
+        .piece { font-size: calc(var(--sq-size) * 0.8); z-index: 10; user-select: none; transition: transform 0.2s; }
+        .rotated .piece, .rotated .clock-box, .rotated .coords-v, .rotated .coords-h { transform: rotate(-180deg); }
+
+        .clock-box { 
+            padding: 22px 32px;
+            border-radius: 10px;
+            background: #191b1f;
+            border: 2px solid #23252a;
+            font-family: 'Segoe UI', 'Arial', 'Tahoma', 'Verdana', system-ui, monospace;
+            font-size: 38px;
+            min-width: 160px;
+            text-align: center;
+            color: var(--text-clock);
+            transition: box-shadow 0.2s, color 0.2s, opacity 0.2s, border-color 0.2s, background 0.2s;
+            box-shadow: none;
+            position: relative;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        .clock-white {
+            color: #2ecc71;
+            border-color: #2ecc71;
+            background: #23272e;
+        }
+        .clock-black {
+            color: #f1c40f;
+            border-color: #f1c40f;
+            background: #23272e;
+        }
+        .clock-inactive {
+            opacity: 0.5;
+            box-shadow: none;
+            filter: grayscale(0.2);
+        }
+        .clock-active {
+            opacity: 1;
+            border-width: 3px;
+            box-shadow: none;
+        }
+        .clock-white.clock-active {
+            border-color: #27ae60 !important;
+            background: #23272e;
+        }
+        .clock-black.clock-active {
+            border-color: #bfa800 !important;
+            background: #23272e;
+        }
+        .clock-box.time-low {
+            color: #fff !important;
+            border-color: #e74c3c !important;
+            background: #23272e !important;
+            animation: blink-red 0.8s infinite;
+        }
+        @keyframes blink-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .time-low { color: var(--enemy) !important; animation: blink 0.8s infinite; border-color: var(--enemy); }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        .fixed-controls { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 28px;
+            background: rgba(20,20,25,0.9); 
+            padding: 40px; 
+            border-radius: 16px; 
+            border: 1px solid #333; 
+            width: 340px; 
+            margin-left: 40px;
+        }
+        .btn-ui { background: #222; border: 1px solid #444; color: white; padding: 12px; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; transition: 0.2s, transform 0.08s; font-size: 11px; text-transform: uppercase; }
+        .btn-ui:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-ui:active {
+            transform: scale(0.96);
+            box-shadow: 0 2px 8px 0 rgba(0,242,255,0.08);
+            filter: brightness(0.93);
+        }
+        #settings-btn-fixed {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            z-index: 1001; /* Higher than header */
+            width: auto;
+            padding: 10px 20px;
+            font-size: 14px;
+            border-radius: 50px; /* Make it a pill */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        .btn-small {
+            padding: 8px 10px;
+            font-size: 10px;
+            width: auto;
+        }
+        .btn-anim:active, .btn-ui.btn-anim:active {
+            transform: scale(0.88) rotate(-8deg);
+            background: #181c22 !important;
+            color: var(--accent) !important;
+            transition: 0.08s;
+        }
+        #sidebar-close-btn {
+            transition: 0.12s;
+            user-select: none;
+            border-radius: 50%;
+            padding: 2px 10px 2px 10px;
+            margin-left: 8px;
+            color: #fff;
+        }
+        #sidebar-close-btn:hover {
+            background: #23272e;
+            color: var(--accent);
+        }
+        #sidebar-close-btn:active {
+            background: #181c22;
+            color: var(--enemy);
+            transform: scale(0.85) rotate(-10deg);
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: -340px;
+            left: auto;
+            width: 340px;
+            height: 100%;
+            background: #181c22;
+            z-index: 2000;
+            padding: 28px 18px 18px 18px;
+            border-left: 1px solid #222;
+            transition: 0.3s ease;
+            overflow-y: auto;
+            box-shadow: -2px 0 12px 0 rgba(0,0,0,0.12);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            font-family: 'Segoe UI', 'Arial', 'Tahoma', 'Verdana', system-ui, sans-serif;
+        }
+        .sidebar.open {
+            right: 0;
+            left: auto;
+        }
+        .sidebar.open .sidebar-spacer {
+            height: 70px;
+            display: block;
+        }
+        .sidebar .sidebar-spacer {
+            height: 0;
+            display: block;
+            transition: height 0.2s;
+        }
+        .sidebar .section {
+            margin-bottom: 12px;
+            border-bottom: 1.5px solid #222;
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+            position: relative;
+        }
+        .sidebar .section:not(:last-child)::after {
+            content: "";
+            display: block;
+            position: absolute;
+            left: 0; right: 0; bottom: -9px;
+            height: 1.5px;
+            background: linear-gradient(90deg, #23272e 0%, #00f2ff 50%, #23272e 100%);
+            opacity: 0.25;
+            border-radius: 2px;
+        }
+        .sidebar h3 {
+            font-size: 14px;
+            color: #00f2ff;
+            margin-bottom: 14px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #23272e;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .sidebar label, .sidebar select, .sidebar input, .sidebar button {
+            font-size: 13px;
+            font-family: 'Segoe UI', 'Arial', 'Tahoma', 'Verdana', system-ui, sans-serif;
+        }
+        .sidebar .btn-ui {
+            margin-top: 5px;
+            margin-bottom: 3px;
+            background: #23272e;
+            border: 1px solid #333;
+            color: #fff;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 8px 0;
+            width: 100%;
+            transition: 0.2s;
+        }
+        .sidebar .btn-ui:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: #181c22;
+        }
+        .color-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            gap: 8px;
+        }
+        .sidebar input[type="color"] {
+            border: 1px solid #333;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #23272e;
+            padding: 0;
+        }
+        .sidebar input[type="color"]:hover {
+            border-color: var(--accent);
+        }
+        .sidebar select, .sidebar input[type="number"] {
+            background: #23272e;
+            color: #fff;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 5px 8px;
+        }
+        .sidebar input[type="number"] {
+            width: 60px;
+        }
+        .sidebar #history-log {
+            background: #23272e;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+        .sidebar .btn-ui:last-child {
+            margin-top: 8px;
+        }
+
+        .stats-summary {
+            margin-top: 8px;
+            text-align: center;
+            font-size: 13px;
+            color: #fff;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        .stats-summary .winner {
+            color: var(--accent);
+            font-weight: bold;
+            text-shadow: none;
+            font-family: 'Segoe UI', 'Arial', 'Tahoma', 'Verdana', system-ui, sans-serif;
+        }
+        .stats-summary .loser {
+            color: #888;
+            font-family: 'Segoe UI', 'Arial', 'Tahoma', 'Verdana', system-ui, sans-serif;
+        }
+        .stats-summary .draw {
+            color: #ffb300;
+            font-family: 'Segoe UI', 'Arial', 'Tahoma', 'Verdana', system-ui, sans-serif;
+        }
+
+        .threat-check { background: radial-gradient(circle, rgba(255, 42, 109, 0.7) 0%, transparent 85%) !important; animation: pulse-red 1.5s infinite; }
+        .threat-attack { box-shadow: inset 0 0 12px rgba(255, 42, 109, 0.8); border: 2px dashed var(--enemy); }
+        @keyframes pulse-red { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+
+        .coords-v { position: absolute; left: 5px; top: 25px; height: calc(100% - 50px); display: flex; flex-direction: column; justify-content: space-around; font-size: 11px; color: #777; font-weight: bold; }
+        .coords-h { position: absolute; bottom: 5px; left: 25px; width: calc(100% - 50px); display: flex; justify-content: space-around; font-size: 11px; color: #777; font-weight: bold; }
+
+        .selected { background: rgba(0, 242, 255, 0.5) !important; }
+        .hint-dot { position: absolute; width: 18%; height: 18%; background: rgba(0, 242, 255, 0.6); border-radius: 50%; z-index: 5; pointer-events: none; }
+        
+        input[type="color"] { border: none; width: 40px; height: 40px; cursor: pointer; background: none; }
+
+        .overlay {
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,0.98); 
+            z-index: 99999;
+            display: none; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center;
+            color: var(--enemy); 
+            text-align: center; 
+            border: 15px solid var(--enemy);
+            padding: 20px;
+        }
+        
+        .overlay-content {
+            max-width: 800px;
+            width: 90%;
+            padding: 0;
+            background: #181c22;
+            border: 2px solid var(--accent);
+            border-radius: 12px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+        }
+        
+        .overlay-header {
+            padding: 30px 40px 20px 40px;
+            border-bottom: 1px solid #333;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .overlay-body {
+            padding: 20px 40px 30px 40px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        
+        .overlay h1, .overlay h2 {
+            font-family:'Orbitron',Arial,sans-serif;
+            color:var(--enemy);
+            letter-spacing:2px;
+            margin-bottom:18px;
+        }
+        
+        .overlay h1 {
+            font-size: 44px;
+        }
+        
+        .overlay h2 {
+            font-size: 48px;
+            color: #00f2ff;
+        }
+        
+        .overlay p {
+            font-family:'Segoe UI',Arial,sans-serif;
+            color:#fff;
+            letter-spacing:1.5px;
+            margin-bottom:10px;
+            font-size: 22px;
+        }
+        
+        .overlay .timeout-details, .overlay .mate-details {
+            font-size: 20px;
+            color: #ffb300;
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255, 179, 0, 0.1);
+            border-radius: 8px;
+            border: 1px solid #ffb300;
+            max-width: 90%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .overlay-buttons {
+            display: flex;
+            gap: 20px;
+            margin-top: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .overlay .btn-ui {
+            min-width: 180px;
+            font-size: 18px;
+            padding: 12px 24px;
+        }
+        
+        .close-overlay-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #23272e;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 10000;
+        }
+        .close-overlay-btn:hover {
+            background: #333;
+            color: var(--accent);
+        }
+
+        #promotion-modal {
+            display: none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.92); z-index:99999;
+            justify-content:center; align-items:center;
+        }
+        #promotion-modal .content {
+            background:#181c22; padding:32px 28px; border-radius:12px; border:2px solid var(--accent); text-align:center;
+        }
+        #promotion-modal h3 {
+            color:var(--accent); font-size:28px; margin-bottom:18px;
+        }
+        #promotion-modal #promotion-options {
+            display:flex; gap:22px; justify-content:center; margin-bottom:18px;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                padding: 0;
+                font-size: 15px;
+                overflow-y: auto;
+                min-height: 100vh;
+            }
+            header {
+                flex-direction: column;
+                padding: 8px 6px;
+                position: relative;
+                z-index: 1001;
+            }
+            #gameLayout {
+                flex-direction: column;
+                gap: 12px;
+                padding: 6px 2vw 6px 2vw;
+                align-items: stretch;
+                min-height: 100vh;
+                margin-top: 0;
+            }
+            .main-center-zone {
+                flex-direction: column;
+                gap: 8px;
+                align-items: stretch;
+                margin-top: 0;
+            }
+            .clocks-container {
+                flex-direction: row;
+                gap: 6px;
+                align-items: center;
+                justify-content: center;
+                margin-bottom: 0;
+                margin-top: 0;
+                padding: 8px 0;
+            }
+            .clock-box {
+                padding: 3px 8px;
+                border-radius: 5px;
+                background: #191b1f;
+                border: 2px solid #23252a;
+                font-size: 14px;
+                min-width: 50px;
+                min-height: 32px;
+                text-align: center;
+                color: var(--text-clock);
+                font-weight: 700;
+                letter-spacing: 0.3px;
+                box-shadow: none;
+                margin: 0 3px;
+                transition: border-color 0.2s, color 0.2s, background 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .clock-white {
+                color: #2ecc71;
+                border-color: #2ecc71;
+                background: #23272e;
+            }
+            .clock-black {
+                color: #f1c40f;
+                border-color: #f1c40f;
+                background: #23272e;
+            }
+            .clock-active {
+                border-color: var(--accent) !important;
+                color: var(--accent) !important;
+                background: #181c22 !important;
+                opacity: 1;
+                border-width: 2px;
+            }
+            .clock-inactive {
+                border-color: #333 !important;
+                color: #888 !important;
+                background: #23272e !important;
+                opacity: 0.6;
+            }
+            .clock-box.time-low {
+                color: #fff !important;
+                border-color: #e74c3c !important;
+                background: #23272e !important;
+                animation: blink-red 0.8s infinite;
+            }
+            .clock-label {
+                display: none !important;
+            }
+            .board-wrapper {
+                padding: 4px;
+                border-radius: 8px;
+                box-shadow: 0 0 10px rgba(0,0,0,0.3);
+                margin: 0 auto;
+                max-width: 98vw;
+                position: relative;
+                margin-top: 0;
+                margin-bottom: 16px;
+            }
+            .board {
+                --sq-size: calc(min(80vw, 80vh) / 8);
+                width: calc(var(--sq-size) * 8) !important;
+                height: calc(var(--sq-size) * 8) !important;
+                min-width: 0;
+                min-height: 0;
+                max-width: 100vw;
+                max-height: 100vw;
+                border-width: 1.5px;
+                position: relative;
+                display: grid !important;
+                grid-template-columns: repeat(8, var(--sq-size));
+                grid-template-rows: repeat(8, var(--sq-size));
+            }
+            .board > .square {
+                flex: 0 0 var(--sq-size);
+                width: var(--sq-size) !important;
+                height: var(--sq-size) !important;
+                min-width: 0;
+                min-height: 0;
+                max-width: 100vw;
+                max-height: 100vw;
+                box-sizing: border-box;
+            }
+            .piece {
+                font-size: calc(var(--sq-size) * 0.8) !important;
+                line-height: 1;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .coords-v {
+                position: absolute;
+                left: -18px;
+                top: 0;
+                height: 100%;
+                width: 16px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                font-size: 11px;
+                color: #777;
+                font-weight: bold;
+                z-index: 20;
+                pointer-events: none;
+                align-items: flex-end;
+            }
+            .coords-h {
+                position: absolute;
+                left: 0;
+                bottom: -18px;
+                width: 100%;
+                height: 16px;
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                font-size: 11px;
+                color: #777;
+                font-weight: bold;
+                z-index: 20;
+                pointer-events: none;
+                align-items: flex-start;
+            }
+            .coords-v > div, .coords-h > div {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                pointer-events: none;
+            }
+            .fixed-controls {
+                width: 100%;
+                margin-left: 0;
+                padding: 12px 4vw 32px 4vw;
+                border-radius: 10px;
+                box-sizing: border-box;
+                gap: 12px;
+                background: rgba(20,20,25,0.9);
+                border: 1px solid #333;
+                margin-bottom: 24px;
+            }
+            .sidebar {
+                width: 96vw;
+                right: -100vw;
+                left: auto;
+                padding: 18px 8px 8px 8px;
+                font-size: 15px;
+            }
+            .sidebar.open {
+                right: 0;
+                left: auto;
+            }
+            #mate-banner,
+            #critical-overlay,
+            #promotion-modal {
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                z-index: 1000;
+            }
+            #critical-overlay h1,
+            #mate-banner h2 {
+                font-size: 28px !important;
+            }
+            #mate-banner #mate-winner,
+            #mate-banner #mate-piece {
+                font-size: 18px !important;
+            }
+            #promotion-modal .content {
+                padding: 18px 8px !important;
+                font-size: 16px !important;
+            }
+            .sidebar .section {
+                padding-bottom: 8px;
+                margin-bottom: 10px;
+            }
+            #history-log {
+                font-size: 15px !important;
+                padding: 6px !important;
+            }
+
+            .sidebar .creator-zone {
+                position: static;
+                transform: none;
+                left: auto;
+                top: auto;
+                align-items: center;
+                width: 100%;
+                margin-bottom: 18px;
+                padding-bottom: 14px;
+                border-bottom: 1.5px solid #222;
+            }
+            
+            .overlay h1 {
+                font-size: 32px !important;
+            }
+            .overlay h2 {
+                font-size: 28px !important;
+            }
+            .overlay p {
+                font-size: 18px !important;
+            }
+            .overlay .timeout-details, .overlay .mate-details {
+                font-size: 16px !important;
+            }
+            .overlay-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .overlay .btn-ui {
+                min-width: 150px;
+                font-size: 16px;
+            }
+        }
+
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+        .switch {
+            position: relative;
+            width: 50px;
+            height: 28px;
+            background: #333;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            border: 1px solid #444;
+        }
+        .switch.active {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        .switch::after {
+            content: '';
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            top: 1px;
+            left: 1px;
+            transition: left 0.3s ease;
+        }
+        .switch.active::after {
+            left: 23px;
+        }
+        .switch-label {
+            font-size: 13px;
+            color: #fff;
+            font-weight: 500;
+            user-select: none;
+        }
+
+        #board.invisible .piece:not(.revealed) {
+            color: transparent !important;
+            text-shadow: none !important;
+        }
+        
+        .version-sidebar {
+            font-family: 'Segoe UI', 'Arial', 'Tahoma', 'Verdana', system-ui, sans-serif;
+            font-size: 13px;
+            color: #b0b0b0;
+            text-align: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #333;
+            font-style: italic;
+        }
+        
+        #critical-alert-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+        #critical-alert-overlay h1 {
+            font-size: 40px;
+            color: #ff3333;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255,50,50,0.7);
+        }
+        #critical-alert-overlay p {
+            font-size: 20px;
+            color: white;
+            margin-bottom: 30px;
+        }
+        #critical-alert-overlay button {
+            background: #ff3333;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #critical-alert-overlay button:hover {
+            background: #ff5555;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+
+
+<audio id="snd-move" src="sounds/move.mp3" preload="auto"></audio>
+<audio id="snd-check" src="sounds/check.mp3" preload="auto"></audio>
+<audio id="snd-mate" src="sounds/mate.mp3" preload="auto"></audio>
+<audio id="snd-time" src="sounds/time.mp3" preload="auto"></audio>
+<audio id="snd-timelow" src="sounds/timelow.mp3" preload="auto"></audio>
+<audio id="snd-capture" src="sounds/capture.mp3" preload="auto"></audio>
+<audio id="snd-draw" src="sounds/draw.mp3" preload="auto"></audio>
+<audio id="snd-start" src="sounds/start.mp3" preload="auto"></audio>
+<audio id="snd-error" src="sounds/error.mp3" preload="auto"></audio>
+<audio id="snd-victory" src="sounds/victory.mp3" preload="auto"></audio>
+<audio id="snd-torre" src="sounds/torre.mp3" preload="auto"></audio>
+<audio id="snd-torrefast" src="sounds/torrefast.mp3" preload="auto"></audio>
+<audio id="snd-enroque" src="sounds/enroque.mp3" preload="auto"></audio>
+<audio id="snd-jaque" src="sounds/jaque.mp3" preload="auto"></audio>
+<audio id="snd-tiempofinalizado" src="sounds/tiempofinalizado.mp3" preload="auto"></audio>
+
+<div id="critical-alert-overlay">
+    <h1>¡TIEMPO AGOTADO!</h1>
+    <p>El tiempo se ha agotado. Reinicie para continuar.</p>
+    <button id="alert-reset-btn">REINICIAR</button>
+</div>
+
+<div id="critical-overlay" class="overlay">
+    <div class="overlay-content">
+        <div class="overlay-header">
+            <h1 id="timeout-title">TIEMPO AGOTADO</h1>
+            <div class="close-overlay-btn" id="close-timeout-btn">×</div>
+        </div>
+        <div class="overlay-body">
+            <p id="end-reason">El tiempo se ha agotado. Reinicie el núcleo para comenzar una nueva partida.</p>
+            <div id="timeout-details" class="timeout-details" style="display:none;"></div>
+            <div class="overlay-buttons">
+                <button class="btn-ui" id="hardreset-btn" style="border-color:var(--enemy); font-size:18px;">HARD_RESET</button>
+                <button class="btn-ui" id="continue-timeout-btn" style="border-color:#666; color:#666; font-size:18px;">CONTINUAR</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="mate-banner" class="overlay" style="display:none; border-color:#00f2ff;">
+    <div class="overlay-content">
+        <div class="overlay-header">
+            <h2>¡JAQUE MATE!</h2>
+            <div class="close-overlay-btn" id="close-mate-btn">×</div>
+        </div>
+        <div class="overlay-body">
+            <div id="mate-winner" style="font-size:28px; color:#fff; margin-bottom:18px;"></div>
+            <div id="mate-piece" class="mate-details" style="margin-bottom:18px;"></div>
+            <div class="overlay-buttons">
+                <button class="btn-ui" id="mate-restart-btn" style="border-color:var(--accent);">REINICIAR</button>
+                <button class="btn-ui" id="mate-continue-btn" style="border-color:#666; color:#666;">CONTINUAR</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<header>
+            <div class="creator-zone">
+                <span class="creator-text">Creado por S4mØth</span>
+                <a href="https://github.com/ElalChico" target="_blank" class="github-link">
+                    <svg height="12" viewBox="0 0 16 16" version="1.1" width="12" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+                    GITHUB PROFILE
+                </a>
+                <a href="https://discord.gg/q4zxHJu7W9" target="_blank" class="github-link" title="Únete a nuestro servidor de Discord para enviar tus problemas (errores/sugerencias/contribuciones) y compartir tu experiencia usando GM2000.">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.872-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.125-.094.25-.189.372-.286a.076.076 0 0 1 .076-.01c3.928 1.793 8.18 1.793 12.062 0a.076.076 0 0 1 .077.01c.12.097.245.192.37.286a.077.077 0 0 1-.006.128 12.3 12.3 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.77 1.363 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.41 0-1.325.956-2.41 2.157-2.41 1.21 0 2.176 1.095 2.157 2.41 0 1.325-.956 2.41-2.157 2.41zm7.975 0c-1.183 0-2.157-1.085-2.157-2.41 0-1.325.955-2.41 2.157-2.41 1.21 0 2.176 1.095 2.157 2.41 0 1.325-.946 2.41-2.157 2.41z"/>
+                    </svg>
+                    DISCORD SERVER
+                </a>
+            </div>
+        </div>
+        <img src="./images/Banner.webp" alt="GM2000 Logo" class="header-logo" draggable="false"
+             oncontextmenu="return false;" onclick="return false;">
+
+    </div>
+</header>
+
+<div class="sidebar" id="sidebar">
+    <button id="sidebar-close-btn" class="btn-ui btn-anim" type="button" aria-label="Cerrar panel"
+        style="position:absolute; top:12px; right:12px; width:38px; height:38px; font-size:28px; border-radius:50%; background:#23272e; border:1.5px solid #333; color:#fff; z-index:10; display:flex; align-items:center; justify-content:center; padding:0;">
+        ×
+    </button>
+    <div class="sidebar-spacer"></div>
+    <div class="section">
+        <h3>PERSONALIZACIÓN VISUAL</h3>
+        <div class="color-row">
+            <span>Casillas Claras</span>
+            <input type="color" id="col-light" oninput="game.updateTheme('light', this.value)">
+        </div>
+        <div class="color-row">
+            <span>Casillas Oscuras</span>
+            <input type="color" id="col-dark" oninput="game.updateTheme('dark', this.value)">
+        </div>
+        <button class="btn-ui" onclick="game.resetTheme()" style="font-size: 9px; margin-top:5px;">RESTAURAR DEFECTO</button>
+    </div>
+
+    <div class="section">
+        <h3>MOTOR DE ROTACIÓN</h3>
+        <label><input type="checkbox" id="opt-rotate" checked onchange="game.render()"> Auto-girar sistema</label>
+        <br>
+        <label style="display:block; margin-top:10px; font-size:12px;">Velocidad de giro:</label>
+        <select id="transSel" onchange="app.updateTrans()" style="margin-top:5px">
+            <option value="transform 0.7s cubic-bezier(0.4, 0, 0.2, 1)">Giro Suave 🌀</option>
+            <option value="transform 0.3s linear">Giro Rápido ⚡</option>
+            <option value="transform 0s">Instantáneo ⚡⚡</option>
+        </select>
+    </div>
+
+    <div class="section">
+        <h3>SINCRONIZACIÓN TEMPORAL</h3>
+        <select id="opt-time-control" class="btn-ui" onchange="game.handleTimeChange()">
+            <option value="0">Sin tiempo (∞)</option>
+            <option value="60">1 Min (Bullet)</option>
+            <option value="180">3 Min (Blitz)</option>
+            <option value="300" selected>5 Min (Blitz)</option>
+            <option value="600">10 Min (Rapid)</option>
+            <option value="custom">PERSONALIZADO...</option>
+        </select>
+        <div id="custom-time-box" style="display:none; margin-top:10px; gap:5px;">
+            <input type="number" id="custom-min" placeholder="Min" class="btn-ui" style="width:60%; text-align:center;" min="1">
+            <button class="btn-ui" style="width:35%;" onclick="game.setCustomTime()">FIJAR</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>RADAR DE AMENAZAS</h3>
+        <label><input type="checkbox" id="opt-hints" checked onchange="game.render()"> Sugerir movimientos</label><br><br>
+        <label><input type="checkbox" id="opt-jaque" checked onchange="game.render()"> Radar Jaque (Global)</label><br><br>
+        <label><input type="checkbox" id="opt-ataque" checked onchange="game.render()"> Radar Ataque (Turno Activo)</label><br><br>
+        <label><input type="checkbox" id="opt-coords" checked onchange="game.renderCoords()"> Visualizar coordenadas</label>
+    </div>
+
+    <div class="section">
+        <h3>MODO ENTRENAMIENTO</h3>
+        <label style="display:block; margin-bottom:8px; font-size:12px;"><b>Tu bando (Blancas):</b></label>
+        <div style="background:#23272e; padding:8px; border-radius:4px; margin-bottom:10px; font-size:12px;">
+            <label><input type="checkbox" id="train-king" checked> ♔ Rey</label><br>
+            <label><input type="checkbox" id="train-queen"> ♕ Reina</label><br>
+            <label><input type="checkbox" id="train-rook"> ♖ Torre</label><br>
+            <label><input type="checkbox" id="train-bishop"> ♗ Alfil</label><br>
+            <label><input type="checkbox" id="train-knight"> ♘ Caballo</label><br>
+            <label><input type="checkbox" id="train-pawn"> ♙ Peón</label>
+        </div>
+
+        <label style="display:block; margin-bottom:8px; font-size:12px;"><b>Oponente (Negras):</b></label>
+        <div style="background:#23272e; padding:8px; border-radius:4px; margin-bottom:10px; font-size:12px;">
+            <label><b>Cantidad de piezas:</b></label><br>
+            <select id="train-opponent-count" style="width:100%; margin-top:5px;">
+                <option value="1">1 Pieza (Solo Rey)</option>
+                <option value="2" selected>2 Piezas (Rey + 1)</option>
+                <option value="3">3 Piezas (Rey + 2)</option>
+                <option value="4">4 Piezas (Rey + 3)</option>
+                <option value="5">5 Piezas (Rey + 4)</option>
+            </select>
+        </div>
+
+        <button class="btn-ui" id="start-training-btn" style="font-size:12px; margin-top:8px;">🎯 INICIAR ENTRENAMIENTO</button>
+        <button class="btn-ui" id="reset-board-btn" style="font-size:12px; margin-top:4px;">🔄 RESETEAR TABLERO</button>
+        
+        <div style="margin-top: 15px; border-top: 1px solid #333; padding-top: 10px;">
+            <h3>FREESTYLE AVANZADO</h3>
+            
+            <div style="margin-bottom: 10px;">
+                <label style="font-size:12px; display:block; margin-bottom:5px;">Modo 960 (1ª fila):</label>
+                <button class="btn-ui" id="start-freestyle-960-btn" style="font-size:12px; width:100%;">♖ FREESTYLE 960 (1ª fila)</button>
+            </div>
+            
+            <div style="margin-bottom: 10px;">
+                <label style="font-size:12px; display:block; margin-bottom:5px;">Modo Aleatorio (todo el tablero):</label>
+                <button class="btn-ui" id="start-random-freestyle-btn" style="font-size:12px; width:100%;">🎲 FREESTYLE ALEATORIO</button>
+            </div>
+            
+            <div style="margin-top: 10px;">
+                <label for="freestyle-piece-count" style="font-size:12px;">Cantidad total de piezas (por jugador):</label>
+                <select id="freestyle-piece-count" style="width:100%; margin-top:5px; font-size:12px;">
+                    <option value="4">4 piezas</option>
+                    <option value="5" selected>5 piezas</option>
+                    <option value="7">7 piezas</option>
+                    <option value="8">8 piezas</option>
+                    <option value="9">9 piezas</option>
+                    <option value="11">11 piezas</option>
+                    <option value="16">Todas (16)</option>
+                </select>
+            </div>
+            
+            <div style="margin-top: 10px;">
+                <label><input type="checkbox" id="freestyle-distribute-all" checked> Distribuir en todo el tablero</label>
+                <div style="font-size:11px; color:#888; margin-top:3px;">
+                    Si está desactivado: piezas en filas 1 y 7<br>
+                    Si está activado: piezas distribuidas aleatoriamente
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>MODO LIBRE</h3>
+        <div class="switch-container">
+            <div id="free-mode-switch" class="switch" onclick="game.toggleFreeMode()"></div>
+            <span class="switch-label">MODO LIBRE</span>
+        </div>
+        <div id="free-mode-label" style="font-size:12px; color:#00f2ff; margin-bottom:4px; display:none;">
+            Modo libre activado: puedes mover cualquier pieza a cualquier casilla.<br>
+            <span style="color:#ffb300;">(Se detectan jaques, pero no se aplican reglas de legalidad)</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>MODO MEMORIA</h3>
+        <div class="switch-container">
+            <div id="invisible-pieces-switch" class="switch" onclick="game.toggleInvisiblePieces()"></div>
+            <span class="switch-label">PIEZAS INVISIBLES</span>
+        </div>
+        <div style="font-size:11px; color:#888; margin-top:4px;">
+            Activa este modo para ocultar las piezas y entrenar tu memoria.
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>LOG DE OPERACIONES</h3>
+        <div id="history-log" style="height: 120px; background:#000; border:1px solid #333; padding:10px; font-size:18px; font-family:'Segoe UI', Arial, sans-serif; overflow-y:auto; margin-bottom:10px; letter-spacing:1px;"></div>
+        <button class="btn-ui" onclick="game.downloadPGN()">💾 DESCARGAR PGN</button>
+        <button class="btn-ui" onclick="game.saveStats()" style="margin-top:6px;">💾 GUARDAR ESTADÍSTICAS</button>
+    </div>
+
+    <div class="section">
+        <h3>ESTADÍSTICAS GLOBALES</h3>
+        <div style="height: 180px; position: relative;">
+            <canvas id="statsChart"></canvas>
+        </div>
+        <div id="stats-summary" class="stats-summary"></div>
+        <button class="btn-ui" onclick="game.resetStats()" style="margin-top:8px; border-color:#ff2a6d; color:#ff2a6d;">🗑 REINICIAR ESTADÍSTICAS</button>
+    </div>
+
+    <div class="section">
+        <h3>SONIDOS</h3>
+        <label>
+            <input type="checkbox" id="opt-sound" checked onchange="game.saveSoundSetting()"> Activar sonidos
+        </label>
+        <div style="font-size:11px; color:#888; margin-top:4px;">
+            Sonidos para movimientos, jaque, mate y avisos de tiempo.<br>
+            <span id="sound-warning" style="color:#ee1708; display:none; font-size:12px; margin-top:6px;">
+                ⚠ Archivos de sonido no encontrados en la carpeta <code>sounds</code>.
+            </span>
+        </div>
+    </div>
+
+    <button class="btn-ui" onclick="location.reload()" style="border-color:var(--enemy); color:var(--enemy);">REINICIAR NÚCLEO</button>
+    
+    <div class="version-sidebar">
+        GM-2000 - versión 2.7
+    </div>
+</div>
+
+<button id="settings-btn-fixed" onclick="game.toggleSidebar()" class="btn-ui">AJUSTES</button>
+
+<div id="gameLayout">
+    <div class="main-center-zone">
+        <div class="clocks-container">
+            <div id="clock-top" class="clock-box clock-black clock-inactive">05:00</div>
+            <div class="clock-label" id="clock-top-label">NEGRAS</div>
+            <div id="clock-bottom" class="clock-box clock-white clock-active">05:00</div>
+            <div class="clock-label" id="clock-bottom-label">BLANCAS</div>
+            <div id="memory-controls" style="display: none; flex-direction: column; gap: 8px; margin-top: 20px; align-self: flex-start;">
+                <button id="reveal-selected-btn" class="btn-ui btn-small">Revelar Pieza</button>
+                <button id="reveal-all-btn" class="btn-ui btn-small">Revelar Tablero</button>
+            </div>
+        </div>
+        <div id="rotation-hub" class="master-rotation-hub">
+            <div class="board-wrapper">
+                <div id="coords-v" class="coords-v"></div>
+                <div id="coords-h" class="coords-h"></div>
+                <div id="board" class="board"></div>
+            </div>
+        </div>
+    </div>
+    <div class="fixed-controls">
+        <div style="text-align:center; padding:15px; border:1px solid #333; background:rgba(0,0,0,0.3);">
+            <small style="color:#666;">JUGADOR_ACTIVO</small>
+            <div id="turn-label" style="font-size:20px; font-weight:bold; color:var(--accent); margin-top:5px;">BLANCAS</div>
+        </div>
+        
+        <button id="play-btn" class="btn-ui" style="border-color:var(--accent); color:var(--accent);" onclick="game.togglePlay()">▶ INICIAR SISTEMA</button>
+        <button class="btn-ui" onclick="game.toggleFS()">⛶ FULLSCREEN</button>
+        <!-- Botones deshacer/rehacer/REINICIAR -->
+        <div style="display:flex; gap:8px; justify-content:center; margin:8px 0 0 0;">
+            <button class="btn-ui" style="width:90px; font-size:10px; padding:6px 0;" onclick="game.undoMove()">⏪ Deshacer</button>
+            <button class="btn-ui" style="width:90px; font-size:10px; padding:6px 0;" onclick="game.redoMove()">⏩ Rehacer</button>
+            <button class="btn-ui" style="width:90px; font-size:10px; padding:6px 0;" onclick="game.resetBoard()">🔄 Reiniciar</button>
+        </div>
+        
+        <div style="height: 240px; margin-top:10px; background:#000; padding:18px; border:1px solid #333;">
+            <canvas id="evalChart"></canvas>
+        </div>
+        <div style="font-size:11px; color:#aaa; margin-top:2px; text-align:center;">
+            <span style="color:#00f2ff; font-weight:bold;">●</span> Blancas &nbsp;&nbsp;
+            <span style="color:#ff2a6d; font-weight:bold;">●</span> Negras
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE PROMOCIÓN DE PEÓN -->
+<div id="promotion-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.92); z-index:99999; justify-content:center; align-items:center;">
+    <div style="background:#181c22; padding:32px 28px; border-radius:12px; border:2px solid var(--accent); text-align:center;">
+        <h3 style="color:var(--accent); font-size:28px; margin-bottom:18px;">¡Coronación de Peón!</h3>
+        <div id="promotion-options" style="display:flex; gap:22px; justify-content:center; margin-bottom:18px;">
+            <!-- Opciones se generan por JS -->
+        </div>
+        <button class="btn-ui" onclick="hidePromotionModal()" style="margin-top:10px;">Cancelar</button>
+    </div>
+</div>
+
+<script>
+const PIECES = { 'w-r':'♖','w-n':'♘','w-b':'♗','w-q':'♕','w-k':'♔','w-p':'♙','b-r':'♜','b-n':'♞','b-b':'♝','b-q':'♛','b-k':'♚','b-p':'♟' };
+const VALS = { 'p':1, 'n':3, 'b':3, 'r':5, 'q':9, 'k':0 };
+
+const game = {
+    board: [], turn: 'w', selected: null, active: false,
+    times: {w:300, b:300}, chart: null, statsChart: null, history: [],
+    globalStats: { w: 0, b: 0, d: 0 },
+    freeMode: false,
+    invisiblePieces: false,
+    undoStack: [],
+    redoStack: [],
+    soundOn: true,
+    animating: false,
+    moveCountWithoutCapture: 0,
+    positionHistory: {},
+    fiftyMoveRule: 0,
+    gameEnded: false,
+    checksCount: { w: 0, b: 0 },
+    capturesCount: { w: 0, b: 0 },
+
+    init() {
+        this.loadSettings();
+
+        // Mover firma a sidebar en móvil
+        const creatorZone = document.querySelector('.creator-zone');
+        if (creatorZone) {
+            const sidebar = document.getElementById('sidebar');
+            const header = document.querySelector('header');
+            // El elemento antes del cual insertar es el primer .section
+            const visualSection = sidebar.querySelector('.section');
+
+            const moveElements = () => {
+                if (window.innerWidth <= 700) {
+                    // Móvil: Mover a la sidebar si no está ya
+                    if (creatorZone.parentElement !== sidebar) {
+                        sidebar.insertBefore(creatorZone, visualSection);
+                    }
+                } else {
+                    // Escritorio: Mover de vuelta al header si no está ya
+                    if (creatorZone.parentElement !== header) {
+                        header.insertBefore(creatorZone, header.firstChild);
+                    }
+                }
+            };
+
+            moveElements(); // Ejecutar al cargar
+            window.addEventListener('resize', moveElements); // Y al reescalar
+        }
+
+        // Cargar estadísticas desde localStorage al iniciar
+        const savedStats = localStorage.getItem('gm2000-stats');
+        if (savedStats) {
+            this.globalStats = JSON.parse(savedStats);
+        } else {
+            localStorage.setItem('gm2000-stats', JSON.stringify(this.globalStats));
+        }
+
+        document.getElementById('reveal-selected-btn').onclick = () => {
+            if (!this.selected) return;
+            const {r, c} = this.selected;
+            const boardEl = document.getElementById('board');
+            const squareEl = boardEl.children[r * 8 + c];
+            const pieceEl = squareEl.querySelector('.piece');
+            if (pieceEl) {
+                pieceEl.classList.add('revealed');
+                setTimeout(() => {
+                    pieceEl.classList.remove('revealed');
+                }, 1000);
+            }
+        };
+
+        document.getElementById('reveal-all-btn').onclick = () => {
+            const board = document.getElementById('board');
+            const btn = document.getElementById('reveal-all-btn');
+            board.classList.toggle('invisible');
+            if (board.classList.contains('invisible')) {
+                btn.innerText = 'Revelar Tablero';
+            } else {
+                btn.innerText = 'Ocultar Tablero';
+            }
+        };
+
+        const transSel = document.getElementById('transSel');
+        document.documentElement.style.setProperty('--trans-config', transSel.value);
+        transSel.onchange = function() {
+            document.documentElement.style.setProperty('--trans-config', transSel.value);
+        };
+        this.createBoard();
+        this.initChart();
+        this.initStatsChart();
+        this.renderCoords();
+        this.render();
+        setInterval(() => this.tick(), 1000);
+
+        const soundChk = document.getElementById('opt-sound');
+        if (localStorage.getItem('gm2000-sound') !== null) {
+            this.soundOn = localStorage.getItem('gm2000-sound') === 'true';
+            soundChk.checked = this.soundOn;
+        } else {
+            this.soundOn = true;
+            soundChk.checked = true;
+        }
+        soundChk.onchange = () => this.saveSoundSetting();
+        
+        setTimeout(() => checkSoundFiles(), 2000);
+    },
+
+    loadSettings() {
+        const savedLight = localStorage.getItem('gm2000-light');
+        const savedDark = localStorage.getItem('gm2000-dark');
+        const savedStats = localStorage.getItem('gm2000-stats');
+        const savedInvisible = localStorage.getItem('gm2000-invisible');
+
+        if (savedInvisible === 'true') {
+            this.invisiblePieces = true;
+            document.getElementById('invisible-pieces-switch').classList.add('active');
+            document.getElementById('board').classList.add('invisible');
+            document.getElementById('memory-controls').style.display = 'flex';
+        }
+
+        if(savedLight) {
+            document.documentElement.style.setProperty('--light-sq', savedLight);
+            document.getElementById('col-light').value = savedLight;
+        } else {
+            document.documentElement.style.setProperty('--light-sq', '#818788');
+            document.getElementById('col-light').value = '#818788';
+        }
+        
+        if(savedDark) {
+            document.documentElement.style.setProperty('--dark-sq', savedDark);
+            document.getElementById('col-dark').value = savedDark;
+        } else {
+            document.documentElement.style.setProperty('--dark-sq', '#2e2f33');
+            document.getElementById('col-dark').value = '#2e2f33'; 
+        }
+
+        if(savedStats) {
+            this.globalStats = JSON.parse(savedStats);
+        }
+    },
+
+    updateTheme(type, color) {
+        if(type === 'light') {
+            document.documentElement.style.setProperty('--light-sq', color);
+            localStorage.setItem('gm2000-light', color);
+        } else {
+            document.documentElement.style.setProperty('--dark-sq', color);
+            localStorage.setItem('gm2000-dark', color);
+        }
+    },
+
+    resetTheme() {
+        this.updateTheme('light', '#818788');
+        this.updateTheme('dark', '#2e2f33');
+        document.getElementById('col-light').value = '#818788';
+        document.getElementById('col-dark').value = '#2e2f33';
+    },
+
+    createBoard() {
+        this.board = Array(8).fill(null).map(() => Array(8).fill(null));
+        const layout = ['r','n','b','q','k','b','n','r'];
+        for(let i=0; i<8; i++) {
+            this.board[0][i] = { type: layout[i], color: 'b', moved: false };
+            this.board[1][i] = { type: 'p', color: 'b', moved: false };
+            this.board[6][i] = { type: 'p', color: 'w', moved: false };
+            this.board[7][i] = { type: layout[i], color: 'w', moved: false };
+        }
+        this.positionHistory = {};
+        this.fiftyMoveRule = 0;
+        this.gameEnded = false;
+        this.checksCount = { w: 0, b: 0 };
+        this.capturesCount = { w: 0, b: 0 };
+    },
+
+    checkInitialPosition() {
+        const whiteInCheck = this.isCheck('w');
+        const blackInCheck = this.isCheck('b');
+        
+        if (whiteInCheck && blackInCheck) {
+            return false; // Posición ilegal
+        }
+        
+        if (whiteInCheck) {
+            this.turn = 'w';
+        }
+        
+        if (blackInCheck) {
+            this.turn = 'b';
+        }
+        
+        if ((this.turn === 'w' && blackInCheck) || (this.turn === 'b' && whiteInCheck)) {
+            if (whiteInCheck) {
+                this.turn = 'w';
+            } else if (blackInCheck) {
+                this.turn = 'b';
+            }
+        }
+        
+        return true; // Posición legal
+    },
+
+    getPseudoMoves(r, c, board = this.board) {
+        let moves = [];
+        const p = board[r][c];
+        if (!p) return [];
+        const isW = p.color === 'w';
+        const enemy = isW ? 'b' : 'w';
+        const add = (tr, tc) => {
+            if (tr<0 || tr>7 || tc<0 || tc>7) return false;
+            if (!board[tr][tc]) { moves.push({r:tr, c:tc}); return true; }
+            if (board[tr][tc].color === enemy) { moves.push({r:tr, c:tc}); return false; }
+            return false;
+        };
+        if (p.type === 'p') {
+            const dir = isW ? -1 : 1;
+            if (board[r+dir] && !board[r+dir][c]) {
+                moves.push({r:r+dir, c:c});
+                if (!p.moved && board[r+dir*2] && !board[r+dir*2][c]) moves.push({r:r+dir*2, c:c});
+            }
+            [[-1,dir],[1,dir]].forEach(([dc, dr]) => {
+                if (board[r+dr] && board[r+dr][c+dc] && board[r+dr][c+dc].color === enemy) moves.push({r:r+dr, c:c+dc});
+            });
+        } else if (p.type === 'n') {
+            [[-2,-1],[-2,1],[2,-1],[2,1],[-1,-2],[-1,2],[1,-2],[1,2]].forEach(s => add(r+s[0], c+s[1]));
+        } else if (p.type === 'k') {
+            [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]].forEach(s => add(r+s[0], c+s[1]));
+        } else {
+            const dirs = p.type === 'r' ? [[0,1],[0,-1],[1,0],[-1,0]] : p.type === 'b' ? [[1,1],[1,-1],[-1,1],[-1,-1]] : [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
+            dirs.forEach(d => { for(let i=1; i<8; i++) if (!add(r+d[0]*i, c+d[1]*i)) break; });
+        }
+        return moves;
+    },
+
+    isCheck(color, board = this.board) {
+        let kPos = null;
+        for(let r=0; r<8; r++) for(let c=0; c<8; c++) if(board[r][c]?.type === 'k' && board[r][c].color === color) kPos = {r,c};
+        if (!kPos) return false;
+        const enemy = color === 'w' ? 'b' : 'w';
+        for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+            if (board[r][c]?.color === enemy) {
+                if (this.getPseudoMoves(r, c, board).some(m => m.r === kPos.r && m.c === kPos.c)) return true;
+            }
+        }
+        return false;
+    },
+
+    isThreatened(r, c, color) {
+        const enemy = color === 'w' ? 'b' : 'w';
+        for(let er=0; er<8; er++) for(let ec=0; ec<8; ec++) {
+            if (this.board[er][ec]?.color === enemy) {
+                if (this.getPseudoMoves(er, ec, this.board).some(m => m.r === r && m.c === c)) return true;
+            }
+        }
+        return false;
+    },
+
+    getLegalMoves(r, c) {
+        const p = this.board[r][c];
+        let moves = this.getPseudoMoves(r, c).filter(m => {
+            const temp = JSON.parse(JSON.stringify(this.board));
+            temp[m.r][m.c] = temp[r][c]; temp[r][c] = null;
+            return !this.isCheck(p.color, temp);
+        });
+
+        if (p.type === 'k' && !p.moved && !this.isCheck(p.color)) {
+            const row = p.color === 'w' ? 7 : 0;
+            if (
+                this.board[row][7]?.type === 'r' && this.board[row][7]?.color === p.color && !this.board[row][7].moved &&
+                !this.board[row][5] && !this.board[row][6] &&
+                !this.isThreatened(row, 4, p.color) &&
+                !this.isThreatened(row, 5, p.color) &&
+                !this.isThreatened(row, 6, p.color)
+            ) {
+                moves.push({r:row, c:6, castle:'short'});
+            }
+            if (
+                this.board[row][0]?.type === 'r' && this.board[row][0]?.color === p.color && !this.board[row][0].moved &&
+                !this.board[row][1] && !this.board[row][2] && !this.board[row][3] &&
+                !this.isThreatened(row, 4, p.color) &&
+                !this.isThreatened(row, 3, p.color) &&
+                !this.isThreatened(row, 2, p.color)
+            ) {
+                moves.push({r:row, c:2, castle:'long'});
+            }
+        }
+        return moves;
+    },
+
+    render() {
+        const b = document.getElementById('board'); b.innerHTML = '';
+        const rotate = document.getElementById('opt-rotate').checked && this.turn === 'b' && !this.animating;
+        document.getElementById('rotation-hub').className = `master-rotation-hub ${rotate ? 'rotated' : ''}`;
+        
+        const showJaque = document.getElementById('opt-jaque').checked;
+        const showAtaque = document.getElementById('opt-ataque').checked;
+        const showHints = document.getElementById('opt-hints').checked;
+        const hints = this.selected && !this.freeMode ? this.getLegalMoves(this.selected.r, this.selected.c) : [];
+
+        for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+            const sq = document.createElement('div');
+            sq.className = `square ${(r+c)%2===0?'sq-light':'sq-dark'}`;
+            sq.onclick = () => this.handleSquare(r,c);
+            
+            const p = this.board[r][c];
+            if (p) {
+                if (showJaque && p.type === 'k' && this.isCheck(p.color)) sq.classList.add('threat-check');
+                if (showAtaque && !this.freeMode && p.color === this.turn && this.isThreatened(r, c, p.color)) sq.classList.add('threat-attack');
+                
+                const el = document.createElement('div'); el.className = 'piece';
+                el.innerText = PIECES[`${p.color}-${p.type}`]; el.style.color = p.color === 'w' ? '#fff' : '#000';
+                sq.appendChild(el);
+            }
+            if (this.selected?.r === r && this.selected?.c === c) sq.classList.add('selected');
+            if (showHints && hints.some(m => m.r === r && m.c === c)) sq.innerHTML += '<div class="hint-dot"></div>';
+            b.appendChild(sq);
+        }
+        document.getElementById('turn-label').innerText = this.turn === 'w' ? 'BLANCAS' : 'NEGRAS';
+    },
+
+    toggleFreeMode() {
+        this.freeMode = !this.freeMode;
+        const switchEl = document.getElementById('free-mode-switch');
+        switchEl.classList.toggle('active', this.freeMode);
+        document.getElementById('free-mode-label').style.display = this.freeMode ? 'block' : 'none';
+        this.selected = null;
+        this.render();
+    },
+
+    toggleInvisiblePieces() {
+        this.invisiblePieces = !this.invisiblePieces;
+        const switchEl = document.getElementById('invisible-pieces-switch');
+        switchEl.classList.toggle('active', this.invisiblePieces);
+        document.getElementById('board').classList.toggle('invisible', this.invisiblePieces);
+        document.getElementById('memory-controls').style.display = this.invisiblePieces ? 'flex' : 'none';
+        if(this.invisiblePieces) {
+             document.getElementById('reveal-all-btn').innerText = 'Revelar Tablero';
+        }
+        localStorage.setItem('gm2000-invisible', this.invisiblePieces);
+        this.render();
+    },
+
+    startTraining() {
+        const playerPieces = [];
+        if (document.getElementById('train-queen').checked) playerPieces.push('q');
+        if (document.getElementById('train-rook').checked) playerPieces.push('r');
+        if (document.getElementById('train-bishop').checked) playerPieces.push('b');
+        if (document.getElementById('train-knight').checked) playerPieces.push('n');
+        if (document.getElementById('train-pawn').checked) playerPieces.push('p');
+
+        this.board = Array(8).fill(null).map(() => Array(8).fill(null));
+
+        const whiteKingPositions = [ [7,0], [7,7], [6,0], [6,7] ];
+        const wkPos = whiteKingPositions[Math.floor(Math.random()*whiteKingPositions.length)];
+        this.board[wkPos[0]][wkPos[1]] = { type: 'k', color: 'w', moved: false };
+
+        const blackKingPositions = [ [0,0], [0,7], [1,0], [1,7] ].filter(pos => !(pos[0] === wkPos[0] && pos[1] === wkPos[1]));
+        const bkPos = blackKingPositions[Math.floor(Math.random()*blackKingPositions.length)];
+        this.board[bkPos[0]][bkPos[1]] = { type: 'k', color: 'b', moved: false };
+
+        for (let piece of playerPieces) {
+            let placed = false, tries = 0;
+            while (!placed && tries < 100) {
+                const r = Math.floor(Math.random() * 8);
+                const c = Math.floor(Math.random() * 8);
+                if (!this.board[r][c] && (r !== bkPos[0] || c !== bkPos[1]) && (r !== wkPos[0] || c !== wkPos[1])) {
+                    this.board[r][c] = { type: piece, color: 'w', moved: false };
+                    placed = true;
+                }
+                tries++;
+            }
+        }
+
+        const opponentCount = Math.max(1, parseInt(document.getElementById('train-opponent-count').value));
+        const blackPieces = ['r', 'b', 'n', 'q', 'p'];
+        let blackPlaced = 0;
+        while (blackPlaced < opponentCount - 1) {
+            let piece = blackPieces[Math.floor(Math.random() * blackBones.length)];
+            let placed = false, tries = 0;
+            while (!placed && tries < 100) {
+                const r = Math.floor(Math.random() * 8);
+                const c = Math.floor(Math.random() * 8);
+                if (!this.board[r][c] && (r !== wkPos[0] || c !== wkPos[1]) && (r !== bkPos[0] || c !== bkPos[1])) {
+                    this.board[r][c] = { type: piece, color: 'b', moved: false };
+                    placed = true;
+                    blackPlaced++;
+                }
+                tries++;
+            }
+        }
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if ((r !== wkPos[0] || c !== wkPos[1]) && this.board[r][c]?.type === 'k' && this.board[r][c]?.color === 'w') {
+                    this.board[r][c] = null;
+                }
+                if ((r !== bkPos[0] || c !== bkPos[1]) && this.board[r][c]?.type === 'k' && this.board[r][c]?.color === 'b') {
+                    this.board[r][c] = null;
+                }
+            }
+        }
+
+        this.turn = 'w';
+        this.selected = null;
+        this.active = false;
+        this.history = [];
+        this.undoStack = [];
+        this.redoStack = [];
+        this.positionHistory = {};
+        this.fiftyMoveRule = 0;
+        this.gameEnded = false;
+        this.checkInitialPosition();
+        
+        document.getElementById('play-btn').innerText = '▶ INICIAR SISTEMA';
+        this.updateHistoryUI();
+        this.render();
+        this.toggleSidebar();
+        playSound('start');
+    },
+
+    saveSoundSetting() {
+        this.soundOn = document.getElementById('opt-sound').checked;
+        localStorage.setItem('gm2000-sound', this.soundOn);
+    },
+
+    generate960Position() {
+        let positions = new Array(8).fill(null);
+        
+        const lightSquares = [0, 2, 4, 6];
+        const darkSquares = [1, 3, 5, 7];
+        
+        const lightBishopPos = lightSquares[Math.floor(Math.random() * lightSquares.length)];
+        positions[lightBishopPos] = 'b';
+        
+        const darkBishopPos = darkSquares[Math.floor(Math.random() * darkSquares.length)];
+        positions[darkBishopPos] = 'b';
+        
+        const queenPositions = [];
+        for (let i = 0; i < 8; i++) {
+            if (positions[i] === null) queenPositions.push(i);
+        }
+        const queenPos = queenPositions[Math.floor(Math.random() * queenPositions.length)];
+        positions[queenPos] = 'q';
+        
+        const knightPositions = [];
+        for (let i = 0; i < 8; i++) {
+            if (positions[i] === null) knightPositions.push(i);
+        }
+        const knight1Index = Math.floor(Math.random() * knightPositions.length);
+        const knight1Pos = knightPositions[knight1Index];
+        positions[knight1Pos] = 'n';
+        knightPositions.splice(knight1Index, 1);
+        
+        const knight2Pos = knightPositions[Math.floor(Math.random() * knightPositions.length)];
+        positions[knight2Pos] = 'n';
+        
+        const remaining = [];
+        for (let i = 0; i < 8; i++) {
+            if (positions[i] === null) remaining.push(i);
+        }
+        remaining.sort((a, b) => a - b);
+        
+        positions[remaining[0]] = 'r';
+        positions[remaining[1]] = 'k';
+        positions[remaining[2]] = 'r';
+        
+        return positions;
+    },
+
+    startFreestyle960() {
+        let attempts = 0;
+        let validPosition = false;
+        
+        while (!validPosition && attempts < 100) {
+            this.board = Array(8).fill(null).map(() => Array(8).fill(null));
+            
+            const firstRow = this.generate960Position();
+            
+            for (let i = 0; i < 8; i++) {
+                this.board[0][i] = { type: firstRow[i], color: 'b', moved: false };
+                this.board[1][i] = { type: 'p', color: 'b', moved: false };
+            }
+            
+            for (let i = 0; i < 8; i++) {
+                this.board[7][i] = { type: firstRow[i], color: 'w', moved: false };
+                this.board[6][i] = { type: 'p', color: 'w', moved: false };
+            }
+            
+            validPosition = this.checkInitialPosition();
+            attempts++;
+        }
+        
+        if (attempts >= 100) {
+            alert("No se pudo generar una posición válida después de 100 intentos. Se reiniciará a la posición estándar.");
+            this.createBoard();
+            this.turn = 'w';
+            this.selected = null;
+            this.render();
+            return;
+        }
+        
+        this.turn = 'w';
+        this.selected = null;
+        this.active = false;
+        this.history = [];
+        this.undoStack = [];
+        this.redoStack = [];
+        this.positionHistory = {};
+        this.fiftyMoveRule = 0;
+        this.gameEnded = false;
+        this.checksCount = { w: 0, b: 0 };
+        this.capturesCount = { w: 0, b: 0 };
+        
+        document.getElementById('play-btn').innerText = '▶ INICIAR SISTEMA';
+        this.updateHistoryUI();
+        this.render();
+        this.toggleSidebar();
+        playSound('start');
+    },
+
+    startRandomFreestyle() {
+        let attempts = 0;
+        let validPosition = false;
+        
+        while (!validPosition && attempts < 100) {
+            this.board = Array(8).fill(null).map(() => Array(8).fill(null));
+            
+            const pieceCount = parseInt(document.getElementById('freestyle-piece-count').value);
+            const distributeAll = document.getElementById('freestyle-distribute-all').checked;
+            
+            const pieceTypes = ['r', 'n', 'b', 'q', 'p'];
+            
+            const getRandomPiece = () => {
+                const rand = Math.random();
+                if (rand < 0.4) return 'p';
+                if (rand < 0.6) return 'n';
+                if (rand < 0.8) return 'b';
+                if (rand < 0.95) return 'r';
+                return 'q';
+            };
+            
+            const placePiecesForColor = (color) => {
+                let kingPlaced = false;
+                
+                let kingAttempts = 0;
+                while (!kingPlaced && kingAttempts < 100) {
+                    let r, c;
+                    
+                    if (distributeAll) {
+                        r = Math.floor(Math.random() * 8);
+                        c = Math.floor(Math.random() * 8);
+                    } else {
+                        if (color === 'b') {
+                            r = Math.floor(Math.random() * 2);
+                        } else {
+                            r = 6 + Math.floor(Math.random() * 2);
+                        }
+                        c = Math.floor(Math.random() * 8);
+                    }
+                    
+                    if (!this.board[r][c]) {
+                        this.board[r][c] = { type: 'k', color: color, moved: false };
+                        kingPlaced = true;
+                    }
+                    kingAttempts++;
+                }
+                
+                const piecesToPlace = pieceCount - 1;
+                for (let i = 0; i < piecesToPlace; i++) {
+                    let placed = false;
+                    let pieceAttempts = 0;
+                    
+                    while (!placed && pieceAttempts < 100) {
+                        let r, c;
+                        
+                        if (distributeAll) {
+                            r = Math.floor(Math.random() * 8);
+                            c = Math.floor(Math.random() * 8);
+                        } else {
+                            if (color === 'b') {
+                                r = Math.floor(Math.random() * 2);
+                            } else {
+                                r = 6 + Math.floor(Math.random() * 2);
+                            }
+                            c = Math.floor(Math.random() * 8);
+                        }
+                        
+                        if (!this.board[r][c]) {
+                            const pieceType = getRandomPiece();
+                            this.board[r][c] = { type: pieceType, color: color, moved: false };
+                            placed = true;
+                        }
+                        pieceAttempts++;
+                    }
+                }
+            };
+            
+            placePiecesForColor('b');
+            placePiecesForColor('w');
+            
+            validPosition = this.checkInitialPosition();
+            attempts++;
+        }
+        
+        if (attempts >= 100) {
+            alert("No se pudo generar una posición válida después de 100 intentos. Se reiniciará a la posición estándar.");
+            this.createBoard();
+            this.turn = 'w';
+            this.selected = null;
+            this.render();
+            return;
+        }
+        
+        this.turn = 'w';
+        this.selected = null;
+        this.active = false;
+        this.history = [];
+        this.undoStack = [];
+        this.redoStack = [];
+        this.positionHistory = {};
+        this.fiftyMoveRule = 0;
+        this.gameEnded = false;
+        this.checksCount = { w: 0, b: 0 };
+        this.capturesCount = { w: 0, b: 0 };
+        
+        document.getElementById('play-btn').innerText = '▶ INICIAR SISTEMA';
+        this.updateHistoryUI();
+        this.render();
+        this.toggleSidebar();
+        playSound('start');
+    },
+
+    handleSquare(r, c) {
+        if (!this.active || this.animating || this.gameEnded) return;
+        const p = this.board[r][c];
+        
+        if (this.freeMode) {
+            if (this.selected) {
+                const from = this.selected;
+                const movingPiece = this.board[from.r][from.c];
+                if (!movingPiece) {
+                    this.selected = null;
+                    this.render();
+                    return;
+                }
+                
+                if (movingPiece.color !== this.turn) {
+                    this.selected = null;
+                    this.render();
+                    return;
+                }
+                
+                if (from.r !== r || from.c !== c) {
+                    const targetPiece = this.board[r][c];
+                    
+                    if (targetPiece && targetPiece.type === 'k') {
+                        playSound('error');
+                        alert("¡No puedes capturar al rey! El juego termina con jaque mate.");
+                        this.selected = null;
+                        this.render();
+                        return;
+                    }
+                    
+                    if (targetPiece && targetPiece.color === movingPiece.color) {
+                        playSound('error');
+                        this.selected = null;
+                        this.render();
+                        return;
+                    }
+                    
+                    if (movingPiece.type === 'k') {
+                        for (let rr = 0; rr < 8; rr++) {
+                            for (let cc = 0; cc < 8; cc++) {
+                                if ((rr !== from.r || cc !== from.c) && this.board[rr][cc]?.type === 'k' && this.board[rr][cc]?.color === movingPiece.color) {
+                                    alert('Solo puede haber un rey de cada color en el tablero.');
+                                    this.selected = null;
+                                    this.render();
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                    
+                    this.board[r][c] = movingPiece;
+                    this.board[from.r][from.c] = null;
+                    this.selected = null;
+                    
+                    if (targetPiece && targetPiece.color !== movingPiece.color) {
+                        this.capturesCount[movingPiece.color]++;
+                    }
+                    
+                    this.turn = this.turn === 'w' ? 'b' : 'w';
+                    
+                    const moveStr = `${String.fromCharCode(97+from.c)}${8-from.r}${String.fromCharCode(97+c)}${8-r}`;
+                    this.history.push({p: movingPiece.color, m: moveStr});
+                    this.updateHistoryUI();
+                    
+                    if (targetPiece && targetPiece.color !== movingPiece.color) {
+                        playSound('capture');
+                    } else {
+                        playSound('move');
+                    }
+                    
+                    this.render();
+                    
+                    if (this.isCheck(this.turn)) {
+                        this.checksCount[this.turn === 'w' ? 'b' : 'w']++;
+                        playSound('jaque');
+                    }
+                } else {
+                    this.selected = null;
+                    this.render();
+                }
+            } else if (p && p.color === this.turn) {
+                this.selected = {r, c};
+                this.render();
+            }
+            return;
+        }
+        
+        if (this.selected) {
+            if (!this.board[this.selected.r][this.selected.c] || this.board[this.selected.r][this.selected.c].color !== this.turn) {
+                this.selected = null;
+                this.render();
+                return;
+            }
+            const legalMove = this.getLegalMoves(this.selected.r, this.selected.c).find(m => m.r === r && m.c === c);
+            if (legalMove) {
+                const targetPiece = this.board[r][c];
+                if (targetPiece && targetPiece.type === 'k') {
+                    playSound('error');
+                    alert("¡No puedes capturar al rey! El juego termina con jaque mate.");
+                    this.selected = null;
+                    this.render();
+                    return;
+                }
+                this.executeMove(this.selected.r, this.selected.c, r, c, legalMove);
+            } else if (p && p.color === this.turn) {
+                this.selected = {r, c};
+            } else {
+                playSound('error');
+                this.selected = null;
+            }
+        } else if (p && p.color === this.turn) {
+            this.selected = {r, c};
+        }
+        this.render();
+    },
+
+    saveStatsToCloud() {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    db.collection('users').doc(user.uid).set({
+        stats: this.globalStats,
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true })
+    .then(() => console.log("Estadísticas guardadas en Firebase"))
+    .catch(error => console.error("Error al guardar en Firebase:", error));
+    },
+
+    async executeMove(fr, fc, tr, tc, moveData) {
+        this.undoStack.push({
+            board: JSON.parse(JSON.stringify(this.board)),
+            turn: this.turn,
+            times: {...this.times},
+            history: [...this.history],
+            selected: this.selected,
+            fiftyMoveRule: this.fiftyMoveRule,
+            positionHistory: JSON.parse(JSON.stringify(this.positionHistory)),
+            checksCount: {...this.checksCount},
+            capturesCount: {...this.capturesCount}
+        });
+        this.redoStack = [];
+        const p = this.board[fr][fc];
+        const moveStr = `${String.fromCharCode(97+fc)}${8-fr}${String.fromCharCode(97+tc)}${8-tr}`;
+        const capturedPiece = this.board[tr][tc] && this.board[tr][tc].color !== p.color ? this.board[tr][tc] : null;
+        const isPawnMove = p.type === 'p';
+        const isCapture = capturedPiece !== null;
+        
+        if (isCapture) {
+            this.capturesCount[p.color]++;
+        }
+        
+        if (isPawnMove || isCapture) {
+            this.fiftyMoveRule = 0;
+        } else {
+            this.fiftyMoveRule++;
+        }
+        
+        const positionKey = this.getPositionKey();
+        this.positionHistory[positionKey] = (this.positionHistory[positionKey] || 0) + 1;
+        
+        this.history.push({p:this.turn, m: moveStr});
+        this.updateHistoryUI();
+
+        if (p.type === 'p' && (tr === 0 || tr === 7)) {
+            pendingPromotion = {fr, fc, tr, tc, moveData, color: p.color};
+            showPromotionModal(p.color, (chosenType) => {
+                this.board[tr][tc] = { type: chosenType, color: p.color, moved: true };
+                this.board[fr][fc] = null;
+                if (moveData && moveData.castle) {
+                    this.castleAnimation(tr, moveData.castle, () => {
+                        this.turn = this.turn === 'w' ? 'b' : 'w';
+                        this.selected = null;
+                        this.updateStats();
+                        this.render();
+                        this.checkGameOver();
+                        playSound('move');
+                        pendingPromotion = null;
+                    });
+                    return;
+                }
+                this.turn = this.turn === 'w' ? 'b' : 'w';
+                this.selected = null;
+                this.updateStats();
+                this.render();
+                this.checkGameOver();
+                playSound('move');
+                pendingPromotion = null;
+            });
+            return;
+        }
+
+        if (moveData && moveData.castle) {
+            this.animating = true;
+            this.board[tr][tc] = p; this.board[fr][fc] = null; p.moved = true;
+            this.selected = null;
+            this.render();
+            playSound('move');
+            await new Promise(res => setTimeout(res, 700));
+            if (moveData.castle === 'short') {
+                const rook = this.board[tr][7];
+                this.board[tr][5] = rook; this.board[tr][7] = null;
+                rook.moved = true;
+            } else if (moveData.castle === 'long') {
+                const rook = this.board[tr][0];
+                this.board[tr][3] = rook; this.board[tr][0] = null;
+                rook.moved = true;
+            }
+            this.render();
+            playSound('enroque');
+            await new Promise(res => setTimeout(res, 250));
+            this.animating = false;
+            this.turn = this.turn === 'w' ? 'b' : 'w';
+            this.updateStats();
+            this.render();
+            if (this.isCheck(this.turn)) {
+                this.checksCount[this.turn === 'w' ? 'b' : 'w']++;
+                playSound('jaque');
+            }
+            this.checkGameOver();
+            return;
+        }
+
+        let playedSound = false;
+        if (capturedPiece) {
+            this.board[tr][tc] = p; this.board[fr][fc] = null;
+            p.moved = true;
+            playSound('capture');
+            playedSound = true;
+        } else {
+            this.board[tr][tc] = p; this.board[fr][fc] = null;
+            p.moved = true;
+        }
+        if (!capturedPiece && p.type === 'r') {
+            const dist = Math.abs(fr - tr) + Math.abs(fc - tc);
+            if (dist === 1) {
+                playSound('torrefast');
+            } else if (dist > 1) {
+                playSound('torre');
+            }
+            playedSound = true;
+        }
+        this.turn = this.turn === 'w' ? 'b' : 'w';
+        this.selected = null;
+        this.updateStats();
+        this.render();
+        if (this.isCheck(this.turn)) {
+            this.checksCount[this.turn === 'w' ? 'b' : 'w']++;
+            playSound('jaque');
+            playedSound = true;
+        }
+        if (!playedSound) {
+            playSound('move');
+        }
+        this.checkGameOver();
+    },
+
+    getPositionKey() {
+        let key = '';
+        for(let r=0; r<8; r++) {
+            for(let c=0; c<8; c++) {
+                const p = this.board[r][c];
+                if(p) {
+                    key += `${p.color}${p.type}${r}${c}`;
+                }
+            }
+        }
+        key += this.turn;
+        return key;
+    },
+
+    async castleAnimation(row, type, cb) {
+        this.animating = true;
+        this.render();
+        await new Promise(res => setTimeout(res, 500));
+        if (type === 'short') {
+            const rook = this.board[row][7];
+            this.board[row][5] = rook; this.board[row][7] = null;
+            rook.moved = true;
+        } else if (type === 'long') {
+            const rook = this.board[row][0];
+            this.board[row][3] = rook; this.board[row][0] = null;
+            rook.moved = true;
+        }
+        this.render();
+        playSound('enroque');
+        await new Promise(res => setTimeout(res, 250));
+        this.animating = false;
+        if (cb) cb();
+    },
+
+    undoMove() {
+        if (this.undoStack.length === 0) return;
+        this.redoStack.push({
+            board: JSON.parse(JSON.stringify(this.board)),
+            turn: this.turn,
+            times: {...this.times},
+            history: [...this.history],
+            selected: this.selected,
+            fiftyMoveRule: this.fiftyMoveRule,
+            positionHistory: JSON.parse(JSON.stringify(this.positionHistory)),
+            checksCount: {...this.checksCount},
+            capturesCount: {...this.capturesCount}
+        });
+        const last = this.undoStack.pop();
+        if (last) {
+            this.board = JSON.parse(JSON.stringify(last.board));
+            this.turn = last.turn;
+            this.times = {...last.times};
+            this.history = [...last.history];
+            this.selected = last.selected;
+            this.fiftyMoveRule = last.fiftyMoveRule;
+            this.positionHistory = JSON.parse(JSON.stringify(last.positionHistory));
+            this.checksCount = {...last.checksCount};
+            this.capturesCount = {...last.capturesCount};
+            this.gameEnded = false;
+            this.render();
+            this.updateHistoryUI();
+        }
+    },
+    redoMove() {
+        if (this.redoStack.length === 0) return;
+        this.undoStack.push({
+            board: JSON.parse(JSON.stringify(this.board)),
+            turn: this.turn,
+            times: {...this.times},
+            history: [...this.history],
+            selected: this.selected,
+            fiftyMoveRule: this.fiftyMoveRule,
+            positionHistory: JSON.parse(JSON.stringify(this.positionHistory)),
+            checksCount: {...this.checksCount},
+            capturesCount: {...this.capturesCount}
+        });
+        const next = this.redoStack.pop();
+        if (next) {
+            this.board = JSON.parse(JSON.stringify(next.board));
+            this.turn = next.turn;
+            this.times = {...next.times};
+            this.history = [...next.history];
+            this.selected = next.selected;
+            this.fiftyMoveRule = next.fiftyMoveRule;
+            this.positionHistory = JSON.parse(JSON.stringify(next.positionHistory));
+            this.checksCount = {...next.checksCount};
+            this.capturesCount = {...next.capturesCount};
+            this.gameEnded = false;
+            this.render();
+            this.updateHistoryUI();
+        }
+    },
+
+    // FIXED: Jaque mate ahora reproduce sonido "mate.mp3" y funciona correctamente
+    endGame(winner, mateInfo) {
+        this.gameEnded = true;
+        this.active = false;
+
+        // --- CORRECCIÓN: Si el tiempo de las blancas se agota antes de mover ---
+        if (winner === 'timeout') {
+            const timedOutPlayer = this.turn;
+            const otherPlayer = timedOutPlayer === 'w' ? 'b' : 'w';
+
+            // Detectar si no se ha hecho ningún movimiento y es el primer turno de blancas
+            const noMovesMade = this.history.length === 0 && timedOutPlayer === 'w';
+
+            let result = '';
+            let details = '';
+            let title = 'TIEMPO AGOTADO';
+
+            const hasSufficientMaterial = this.hasSufficientMaterial(otherPlayer);
+
+            if (noMovesMade) {
+                // Blancas pierden por tiempo antes de mover
+                if (hasSufficientMaterial) {
+                    result = 'Las BLANCAS pierden por tiempo antes de realizar su primer movimiento.';
+                    title = 'TIEMPO AGOTADO - GANAN LAS NEGRAS';
+                    details = 'Las blancas no realizaron ningún movimiento y agotaron su tiempo.<br>';
+                    details += 'Las negras tienen material suficiente para dar jaque mate.<br><br>';
+                    this.globalStats.b++;
+                } else {
+                    result = 'TABLAS por material insuficiente (negras no pueden dar mate).';
+                    title = 'TIEMPO AGOTADO - TABLAS';
+                    details = 'Las blancas no realizaron ningún movimiento y agotaron su tiempo,<br>';
+                    details += 'pero las negras no tienen material suficiente para dar jaque mate.<br><br>';
+                    this.globalStats.d++;
+                }
+            } else {
+                // Caso normal de tiempo agotado
+                if (hasSufficientMaterial) {
+                    result = `Gana ${otherPlayer === 'w' ? 'BLANCAS' : 'NEGRAS'} por tiempo`;
+                    title = `TIEMPO AGOTADO - GANAN LAS ${otherPlayer === 'w' ? 'BLANCAS' : 'NEGRAS'}`;
+                    details = `El jugador ${timedOutPlayer === 'w' ? 'BLANCAS' : 'NEGRAS'} se quedó sin tiempo.<br>`;
+                    details += `${otherPlayer === 'w' ? 'BLANCAS' : 'NEGRAS'} tiene material suficiente para dar jaque mate.<br><br>`;
+                    this.globalStats[otherPlayer]++;
+                } else {
+                    result = 'TABLAS por material insuficiente';
+                    title = 'TIEMPO AGOTADO - TABLAS';
+                    details = `El jugador ${timedOutPlayer === 'w' ? 'BLANCAS' : 'NEGRAS'} se quedó sin tiempo,<br>`;
+                    details += `pero ${otherPlayer === 'w' ? 'BLANCAS' : 'NEGRAS'} no tiene material suficiente para dar jaque mate.<br><br>`;
+                    this.globalStats.d++;
+                }
+            }
+
+            details += `<b>Estadísticas de la partida:</b><br>`;
+            details += `• Capturas de BLANCAS: ${this.capturesCount.w}<br>`;
+            details += `• Capturas de NEGRAS: ${this.capturesCount.b}<br>`;
+            details += `• Jaques de BLANCAS: ${this.checksCount.w}<br>`;
+            details += `• Jaques de NEGRAS: ${this.checksCount.b}<br>`;
+            details += `• Total de movimientos: ${this.history.length}`;
+
+            localStorage.setItem('gm2000-stats', JSON.stringify(this.globalStats));
+            this.updateStatsChart();
+
+            document.getElementById('critical-overlay').style.display = 'flex';
+            document.getElementById('timeout-title').innerText = title;
+            document.getElementById('end-reason').innerText = result;
+            document.getElementById('timeout-details').innerHTML = details;
+            document.getElementById('timeout-details').style.display = 'block';
+
+            playSound('tiempofinalizado');
+            return;
+        }
+        
+        document.getElementById('critical-overlay').style.display = 'none';
+        document.getElementById('timeout-details').style.display = 'none';
+        
+        if (winner === 'draw') {
+            let drawReason = 'TABLAS (REY AHOGADO)';
+            playSound('draw');
+            document.getElementById('mate-banner').style.display = 'flex';
+            document.getElementById('mate-winner').innerText = drawReason;
+            document.getElementById('mate-piece').innerText = "";
+            this.globalStats.d++;
+            localStorage.setItem('gm2000-stats', JSON.stringify(this.globalStats));
+            this.updateStatsChart();
+            return;
+        }
+
+        if (winner === 'w' || winner === 'b') {
+            playSound('mate');
+            this.globalStats[winner]++;
+            localStorage.setItem('gm2000-stats', JSON.stringify(this.globalStats));
+            this.updateStatsChart();
+            document.getElementById('mate-banner').style.display = 'flex';
+            document.getElementById('mate-winner').innerText = `Gana ${winner === 'w' ? 'BLANCAS' : 'NEGRAS'}`;
+            if (mateInfo && mateInfo.piece) {
+                const pieceNames = { 'q':'Reina', 'r':'Torre', 'b':'Alfil', 'n':'Caballo', 'p':'Peón', 'k':'Rey' };
+                const pieceUnicode = PIECES[`${mateInfo.color}-${mateInfo.piece}`] || '';
+                document.getElementById('mate-piece').innerHTML = `Mate con: <span style="font-size:28px">${pieceUnicode}</span> <b>${pieceNames[mateInfo.piece]||mateInfo.piece}</b>`;
+            } else {
+                document.getElementById('mate-piece').innerText = "";
+            }
+            return;
+        }
+        
+        console.error("endGame called with unknown winner:", winner);
+    },
+
+    hasSufficientMaterial(color) {
+        let pieces = [];
+        for(let r=0; r<8; r++) {
+            for(let c=0; c<8; c++) {
+                const p = this.board[r][c];
+                if(p && p.color === color) {
+                    pieces.push(p.type);
+                }
+            }
+        }
+        
+        if(pieces.length === 1 && pieces[0] === 'k') return false;
+        
+        if(pieces.length === 2) {
+            if(pieces.includes('n') || pieces.includes('b')) return false;
+        }
+        
+        if(pieces.length === 3 && pieces.filter(p => p === 'n').length === 2) return false;
+        
+        return true;
+    },
+
+    // FIXED: El tiempo ahora cambia correctamente al seleccionar diferentes opciones
+    tick() {
+        if (!this.active || this.gameEnded) return;
+
+        // If time control is 'infinite' (value is '0'), do nothing with time.
+        if (document.getElementById('opt-time-control').value === '0') {
+            return;
+        }
+        
+        if (this.times[this.turn] > 0) {
+            this.times[this.turn]--;
+        }
+
+        const fmt = (t) => {
+            // Always format time as MM:SS, ensuring it's not negative.
+            const displayTime = Math.max(t, 0);
+            const minutes = Math.floor(displayTime / 60);
+            const seconds = displayTime % 60;
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        };
+        const wc = document.getElementById('clock-bottom'), bc = document.getElementById('clock-top');
+        wc.innerText = fmt(this.times.w);
+        bc.innerText = fmt(this.times.b);
+        this.renderClocks();
+
+        if (this.times[this.turn] <= 0) {
+            this.endGame('timeout');
+        }
+    },
+
+    // FIXED: handleTimeChange ahora funciona correctamente
+    handleTimeChange() {
+        const val = document.getElementById('opt-time-control').value;
+        document.getElementById('custom-time-box').style.display = val === 'custom' ? 'flex' : 'none';
+        if (val !== 'custom') {
+            this.resetBoard();
+        }
+    },
+
+    setCustomTime() {
+        const min = parseInt(document.getElementById('custom-min').value);
+        if(min > 0) {
+            document.getElementById('opt-time-control').value = 'custom';
+            this.resetBoard();
+        }
+    },
+
+    // FIXED: setTimeControl actualiza correctamente los tiempos
+    setTimeControl(sec, isCustom = false) {
+        this.times = {w:sec, b:sec}; 
+        this.active = false;
+        this.gameEnded = false;
+        document.getElementById('play-btn').innerText = '▶ INICIAR SISTEMA';
+        const fmt = (t) => {
+            if (t === 0) return "∞";
+            return `${Math.floor(t/60)}:${(t%60).toString().padStart(2,'0')}`;
+        };
+        document.getElementById('clock-bottom').innerText = fmt(this.times.w);
+        document.getElementById('clock-top').innerText = fmt(this.times.b);
+        this.renderClocks();
+        this.lastTimeControl = { sec, isCustom };
+        if (isCustom) {
+            document.getElementById('opt-time-control').value = 'custom';
+            document.getElementById('custom-time-box').style.display = 'flex';
+            document.getElementById('custom-min').value = Math.floor(sec/60);
+        } else {
+            document.getElementById('custom-time-box').style.display = 'none';
+        }
+    },
+
+    renderCoords() {
+        const v = document.getElementById('coords-v'), h = document.getElementById('coords-h');
+        v.innerHTML = h.innerHTML = '';
+        if(!document.getElementById('opt-coords').checked) return;
+        for(let i=0; i<8; i++) { 
+            v.innerHTML += `<div style="height:calc(100%/8); display:flex; align-items:center;">${8-i}</div>`; 
+            h.innerHTML += `<div style="width:calc(100%/8); display:flex; justify-content:center;">${String.fromCharCode(65+i)}</div>`; 
+        }
+    },
+
+    updateHistoryUI() {
+        const log = document.getElementById('history-log'); log.innerHTML = '';
+        this.history.forEach((h,i) => {
+            const prefix = i%2===0 ? `${Math.floor(i/2)+1}. ` : '';
+            log.innerHTML += `<span style="color:${h.p=='w'?'var(--accent)':'#ff2a6d'}; margin-right:8px; font-size:20px; font-family:'Segoe UI', Arial, sans-serif; letter-spacing:1.5px;">${prefix}${h.m}</span>`;
+            if(i%2!==0) log.innerHTML += '<br>';
+        });
+        log.scrollTop = log.scrollHeight;
+    },
+
+    downloadPGN() {
+        let pgn = '[Event "GM2000 Training"]\n';
+        pgn += '[Site "GM2000 v2.7"]\n';
+        pgn += '[Date "' + new Date().toISOString().split('T')[0] + '"]\n\n';
+        this.history.forEach((h, i) => { if (i%2===0) pgn += `${Math.floor(i/2)+1}. `; pgn += h.m + " "; });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([pgn], {type:'text/plain'}));
+        a.download = 'partida.pgn'; a.click();
+    },
+
+    initChart() {
+        this.chart = new Chart(document.getElementById('evalChart'), {
+            type: 'line',
+            data: { 
+                labels: Array(20).fill(''), 
+                datasets: [
+                    {
+                        label:'W', 
+                        data:[15], 
+                        borderColor:'#00f2ff', 
+                        borderWidth:2, 
+                        pointRadius:0, 
+                        tension:0.4
+                    },
+                    {
+                        label:'B', 
+                        data:[15], 
+                        borderColor:'#ff2a6d', 
+                        borderWidth:2, 
+                        pointRadius:0, 
+                        tension:0.4
+                    }
+                ] 
+            },
+            options: { 
+                responsive:true, 
+                maintainAspectRatio:false, 
+                plugins:{
+                    legend:{display:false}
+                }, 
+                scales:{
+                    x:{
+                        display:false
+                    }, 
+                    y:{
+                        grid:{color:'#222'}, 
+                        ticks:{display:false}
+                    }
+                } 
+            }
+        });
+    },
+
+    initStatsChart() {
+        this.statsChart = new Chart(document.getElementById('statsChart'), {
+            type: 'doughnut',
+            data: { 
+                labels: ['Victorias Blancas', 'Victorias Negras', 'Tablas'], 
+                datasets: [{
+                    data: [this.globalStats.w, this.globalStats.b, this.globalStats.d || 0],
+                    backgroundColor: ['#00f2ff', '#ff2a6d', '#ffb300'],
+                    borderColor: '#000',
+                    borderWidth: 2
+                }] 
+            },
+            options: { 
+                responsive:true, 
+                maintainAspectRatio:false, 
+                plugins:{
+                    legend:{display:true, position:'bottom', labels:{color:'#999', boxWidth:10, font:{size:9}}}
+                } 
+            }
+        });
+    },
+
+    updateStats() {
+        let w=0, b=0; 
+        this.board.flat().forEach(p => { 
+            if(p) p.color==='w'?w+=VALS[p.type]:b+=VALS[p.type]; 
+        });
+        
+        this.chart.data.datasets[0].data.push(w); 
+        this.chart.data.datasets[1].data.push(b);
+        if(this.chart.data.datasets[0].data.length > 20) { 
+            this.chart.data.datasets[0].data.shift(); 
+            this.chart.data.datasets[1].data.shift(); 
+        }
+        this.chart.update();
+    },
+    
+    updateStatsChart() {
+        this.statsChart.data.datasets[0].data = [this.globalStats.w, this.globalStats.b, this.globalStats.d || 0];
+        this.statsChart.update();
+    },
+
+    toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); },
+    togglePlay() { 
+        if (this.gameEnded) return;
+        this.active = !this.active; 
+        document.getElementById('play-btn').innerText = this.active ? '⏸ PAUSAR SISTEMA' : '▶ INICIAR SISTEMA'; 
+    },
+    toggleFS() { if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); },
+    renderClocks() {
+        const wc = document.getElementById('clock-bottom');
+        const bc = document.getElementById('clock-top');
+        const wl = document.getElementById('clock-bottom-label');
+        const bl = document.getElementById('clock-top-label');
+        wc.classList.remove('clock-active', 'clock-inactive');
+        bc.classList.remove('clock-active', 'clock-inactive');
+        wl.classList.remove('active', 'inactive');
+        bl.classList.remove('active', 'inactive');
+        if (this.turn === 'w') {
+            wc.classList.add('clock-active');
+            bc.classList.add('clock-inactive');
+            wl.classList.add('active');
+            bl.classList.add('inactive');
+        } else {
+            bc.classList.add('clock-active');
+            wc.classList.add('clock-inactive');
+            bl.classList.add('active');
+            wl.classList.add('inactive');
+        }
+        
+        if (this.times.w !== 0) wc.classList.toggle('time-low', this.times.w < 20);
+        if (this.times.b !== 0) bc.classList.toggle('time-low', this.times.b < 20);
+
+        if (this.turn === 'w' && this.times.w !== 0) {
+            if (this.times.w < 20 && this.times.w > 0) {
+                startTimelowSound();
+            } else {
+                stopTimelowSound();
+            }
+        } else if (this.turn === 'b' && this.times.b !== 0) {
+            if (this.times.b < 20 && this.times.b > 0) {
+                startTimelowSound();
+            } else {
+                stopTimelowSound();
+            }
+        } else {
+            stopTimelowSound();
+        }
+    },
+
+    saveStats() {
+        localStorage.setItem('gm2000-stats', JSON.stringify(this.globalStats));
+        alert('Estadísticas guardadas correctamente.');
+    },
+
+    saveStatsToCloud() {
+        const user = auth.currentUser;
+        if (!user) return;
+        
+        db.collection('users').doc(user.uid).set({
+            stats: this.globalStats,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true })
+        .then(() => console.log("Estadísticas guardadas en Firebase"))
+        .catch(error => console.error("Error al guardar en Firebase:", error));
+    },
+
+    resetStats() {
+        this.globalStats = { w: 0, b: 0, d: 0 };
+        localStorage.setItem('gm2000-stats', JSON.stringify(this.globalStats));
+        this.updateStatsChart();
+        updateStatsSummary();
+    },
+
+    resetBoard() {
+        this.createBoard();
+        this.selected = null;
+        this.active = false;
+        this.gameEnded = false;
+        this.turn = 'w';
+        let sec = 300, isCustom = false;
+        const sel = document.getElementById('opt-time-control');
+        const val = sel.value;
+        if (val === 'custom') {
+            const min = parseInt(document.getElementById('custom-min').value);
+            if (min > 0) {
+                sec = min * 60;
+                isCustom = true;
+            }
+        } else {
+            sec = parseInt(val);
+            isCustom = false;
+        }
+        
+        if (isNaN(sec)) {
+            sec = 300;
+        }
+
+        this.setTimeControl(sec, isCustom);
+        this.history = [];
+        this.undoStack = [];
+        this.redoStack = [];
+
+        // Reiniciar evalChart
+        if (this.chart) {
+            this.chart.data.datasets[0].data = [15];
+            this.chart.data.datasets[1].data = [15];
+            this.chart.update();
+        }
+
+        this.updateHistoryUI();
+        this.render();
+        document.getElementById('play-btn').innerText = '▶ INICIAR SISTEMA';
+        playSound('start');
+    },
+
+    // FIXED: Jaque mate ahora funciona correctamente
+    checkGameOver() {
+        const color = this.turn;
+        let hasLegal = false;
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = this.board[r][c];
+                if (p && p.color === color) {
+                    if (this.getLegalMoves(r, c).length > 0) {
+                        hasLegal = true;
+                        break;
+                    }
+                }
+            }
+            if (hasLegal) break;
+        }
+        
+        if (!hasLegal) {
+            if (this.isCheck(color)) {
+                let mateInfo = null;
+                if (this.history.length > 0) {
+                    const lastMove = this.history[this.history.length - 1];
+                    const fromFile = lastMove.m.charCodeAt(0) - 97;
+                    const fromRank = 8 - parseInt(lastMove.m[1]);
+                    const toFile = lastMove.m.charCodeAt(2) - 97;
+                    const toRank = 8 - parseInt(lastMove.m[3]);
+                    const piece = this.board[toRank]?.[toFile];
+                    if (piece) {
+                        mateInfo = { piece: piece.type, color: piece.color };
+                    }
+                }
+                this.endGame(color === 'w' ? 'b' : 'w', mateInfo);
+            } else {
+                this.endGame('draw');
+            }
+            return;
+        }
+        
+        if (this.isInsufficientMaterial()) {
+            this.endGame('draw');
+            return;
+        }
+        
+        if (this.fiftyMoveRule >= 100) {
+            this.endGame('draw');
+            return;
+        }
+        
+        const positionKey = this.getPositionKey();
+        if (this.positionHistory[positionKey] >= 3) {
+            this.endGame('draw');
+            return;
+        }
+    },
+    
+    isInsufficientMaterial() {
+        let whitePieces = [];
+        let blackPieces = [];
+        
+        for(let r=0; r<8; r++) {
+            for(let c=0; c<8; c++) {
+                const p = this.board[r][c];
+                if(p && p.color === 'w') {
+                    whitePieces.push(p.type);
+                }
+                if(p && p.color === 'b') {
+                    blackPieces.push(p.type);
+                }
+            }
+        }
+        
+        if(whitePieces.length === 1 && blackPieces.length === 1) return true;
+        
+        if((whitePieces.length === 2 && whitePieces.includes('n') && 
+            blackPieces.length === 1) ||
+           (blackPieces.length === 2 && blackPieces.includes('n') && 
+            whitePieces.length === 1)) return true;
+        
+        if((whitePieces.length === 2 && whitePieces.includes('b') && 
+            blackPieces.length === 1) ||
+           (blackPieces.length === 2 && blackPieces.includes('b') && 
+            whitePieces.length === 1)) return true;
+        
+        return false;
+    }
+};
+
+game.init();
+
+function updateStatsSummary() {
+    const stats = game.globalStats;
+    const total = stats.w + stats.b + (stats.d || 0);
+    let winnerText = '';
+    if (stats.w > stats.b && stats.w > (stats.d || 0)) {
+        winnerText = `<span class="winner">¡Más victorias con BLANCAS!</span>`;
+    } else if (stats.b > stats.w && stats.b > (stats.d || 0)) {
+        winnerText = `<span class="winner">¡Más victorias con NEGRAS!</span>`;
+    } else if ((stats.d || 0) > stats.w && (stats.d || 0) > stats.b) {
+        winnerText = `<span class="draw">¡Muchas tablas!</span>`;
+    } else if (total > 0 && stats.w === stats.b) {
+        winnerText = `<span class="draw">¡Empate en victorias!</span>`;
+    }
+    document.getElementById('stats-summary').innerHTML =
+        `Total de partidas: <b>${total}</b><br>
+        Blancas: <span style="color:#00f2ff;font-weight:bold">${stats.w}</span> &nbsp;|&nbsp; 
+        Negras: <span style="color:#ff2a6d;font-weight:bold">${stats.b}</span> &nbsp;|&nbsp;
+        Tablas: <span style="color:#ffb300;font-weight:bold">${stats.d || 0}</span><br>
+        ${winnerText}`;
+}
+
+const origUpdateStatsChart = game.updateStatsChart.bind(game);
+game.updateStatsChart = function() {
+    origUpdateStatsChart();
+    updateStatsSummary();
+};
+updateStatsSummary();
+
+const app = {};
+app.updateTrans = function() {
+    const transSel = document.getElementById('transSel');
+    document.documentElement.style.setProperty('--trans-config', transSel.value);
+};
+
+let pendingPromotion = null;
+function showPromotionModal(color, callback) {
+    const modal = document.getElementById('promotion-modal');
+    const opts = document.getElementById('promotion-options');
+    modal.style.display = 'flex';
+    opts.innerHTML = '';
+    const pieces = ['q','r','b','n'];
+    pieces.forEach(type => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-ui';
+        btn.style.fontSize = '32px';
+        btn.innerText = PIECES[`${color}-${type}`];
+        btn.title = {
+            q: 'Reina', r: 'Torre', b: 'Alfil', n: 'Caballo'
+        }[type];
+        btn.onclick = () => {
+            modal.style.display = 'none';
+            callback(type);
+        };
+        opts.appendChild(btn);
+    });
+}
+function hidePromotionModal() {
+    document.getElementById('promotion-modal').style.display = 'none';
+    pendingPromotion = null;
+}
+
+const soundFiles = {
+    move: document.getElementById('snd-move'),
+    check: document.getElementById('snd-check'),
+    mate: document.getElementById('snd-mate'),
+    time: document.getElementById('snd-time'),
+    timelow: document.getElementById('snd-timelow'),
+    capture: document.getElementById('snd-capture'),
+    draw: document.getElementById('snd-draw'),
+    start: document.getElementById('snd-start'),
+    error: document.getElementById('snd-error'),
+    victory: document.getElementById('snd-victory'),
+    torre: document.getElementById('snd-torre'),
+    torrefast: document.getElementById('snd-torrefast'),
+    enroque: document.getElementById('snd-enroque'),
+    jaque: document.getElementById('snd-jaque'),
+    tiempofinalizado: document.getElementById('snd-tiempofinalizado')
+};
+
+function playSound(name) {
+    if (!game.soundOn) return;
+    const snd = soundFiles[name];
+    if (snd && snd.readyState > 0) {
+        try {
+            snd.pause();
+            snd.currentTime = 0;
+            snd.play().catch(()=>{});
+        } catch (e) {
+        }
+    }
+}
+
+function stopSound(name) {
+    const snd = soundFiles[name];
+    if (snd && !snd.paused) {
+        try {
+            snd.pause();
+            snd.currentTime = 0;
+        } catch (e) {}
+    }
+}
+
+function checkSoundFiles() {
+    let anyLoaded = false;
+    for (const key in soundFiles) {
+        if (soundFiles[key].readyState > 0) {
+            anyLoaded = true;
+            break;
+        }
+    }
+    
+    if (anyLoaded) {
+        document.getElementById('sound-warning').style.display = 'none';
+    } else {
+        setTimeout(() => {
+            let stillMissing = true;
+            for (const key in soundFiles) {
+                if (soundFiles[key].readyState > 0) {
+                    stillMissing = false;
+                    break;
+                }
+            }
+            document.getElementById('sound-warning').style.display = stillMissing ? 'inline' : 'none';
+        }, 2000);
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    checkSoundFiles();
+    playSound('start');
+});
+
+let timelowInterval = null;
+
+function startTimelowSound() {
+    if (timelowInterval) return;
+    playSound('timelow');
+    timelowInterval = setInterval(() => {
+        playSound('timelow');
+    }, 1000);
+}
+
+function stopTimelowSound() {
+    if (timelowInterval) {
+        clearInterval(timelowInterval);
+        timelowInterval = null;
+    }
+    stopSound('timelow');
+}
+
+// Funcionalidad de Alerta por Tiempo Agotado
+function showTimeOutAlert() {
+    document.getElementById('critical-alert-overlay').style.display = 'flex';
+    
+    // Reproducir sonido si está disponible
+    const sound = document.getElementById('snd-tiempofinalizado');
+    if (sound && sound.readyState > 0) {
+        sound.currentTime = 0;
+        sound.play().catch(e => console.log("Error reproduciendo sonido:", e));
+    }
+}
+
+// Manejar clic en el botón de reinicio
+document.getElementById('alert-reset-btn').addEventListener('click', function() {
+    document.getElementById('critical-alert-overlay').style.display = 'none';
+    game.resetBoard();
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+    const hardresetBtn = document.getElementById('hardreset-btn');
+    if (hardresetBtn) {
+        hardresetBtn.addEventListener('click', function(e) {
+            playSound('start');
+            setTimeout(()=>location.reload(), 100);
+        });
+        hardresetBtn.classList.add('btn-anim');
+    }
+    
+    const continueTimeoutBtn = document.getElementById('continue-timeout-btn');
+    if (continueTimeoutBtn) {
+        continueTimeoutBtn.addEventListener('click', function(e) {
+            playSound('move');
+            setTimeout(() => {
+                document.getElementById('critical-overlay').style.display='none';
+                game.gameEnded = false;
+            }, 80);
+        });
+        continueTimeoutBtn.classList.add('btn-anim');
+    }
+    
+    const closeBtn = document.getElementById('sidebar-close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function(e) {
+            game.toggleSidebar();
+        });
+    }
+    
+    const startTrainingBtn = document.getElementById('start-training-btn');
+    if (startTrainingBtn) {
+        startTrainingBtn.addEventListener('click', function(e) {
+            playSound('start');
+            setTimeout(() => game.startTraining(), 80);
+        });
+        startTrainingBtn.classList.add('btn-anim');
+    }
+    
+    const resetBoardBtn = document.getElementById('reset-board-btn');
+    if (resetBoardBtn) {
+        resetBoardBtn.addEventListener('click', function(e) {
+            playSound('start');
+            setTimeout(() => game.resetBoard(), 80);
+        });
+        resetBoardBtn.classList.add('btn-anim');
+    }
+    
+    const mateRestartBtn = document.getElementById('mate-restart-btn');
+    if (mateRestartBtn) {
+        mateRestartBtn.addEventListener('click', function(e) {
+            playSound('start');
+            setTimeout(() => {
+                document.getElementById('mate-banner').style.display='none';
+                game.resetBoard();
+            }, 80);
+        });
+        mateRestartBtn.classList.add('btn-anim');
+    }
+    
+    const mateContinueBtn = document.getElementById('mate-continue-btn');
+    if (mateContinueBtn) {
+        mateContinueBtn.addEventListener('click', function(e) {
+            playSound('move');
+            setTimeout(() => {
+                document.getElementById('mate-banner').style.display='none';
+                game.gameEnded = false;
+            }, 80);
+        });
+        mateContinueBtn.classList.add('btn-anim');
+    }
+    
+    const closeMateBtn = document.getElementById('close-mate-btn');
+    if (closeMateBtn) {
+        closeMateBtn.addEventListener('click', function(e) {
+            playSound('move');
+            setTimeout(() => {
+                document.getElementById('mate-banner').style.display='none';
+                game.gameEnded = false;
+            }, 80);
+        });
+    }
+    
+    const closeTimeoutBtn = document.getElementById('close-timeout-btn');
+    if (closeTimeoutBtn) {
+        closeTimeoutBtn.addEventListener('click', function(e) {
+            playSound('move');
+            setTimeout(() => {
+                document.getElementById('critical-overlay').style.display='none';
+                game.gameEnded = false;
+            }, 80);
+        });
+    }
+    
+    const promoCancelBtn = document.querySelector('#promotion-modal .btn-ui');
+    if (promoCancelBtn) {
+        promoCancelBtn.classList.add('btn-anim');
+    }
+    
+    const startFreestyle960Btn = document.getElementById('start-freestyle-960-btn');
+    if (startFreestyle960Btn) {
+        startFreestyle960Btn.addEventListener('click', function(e) {
+            playSound('start');
+            setTimeout(() => game.startFreestyle960(), 80);
+        });
+        startFreestyle960Btn.classList.add('btn-anim');
+    }
+    
+    const startRandomFreestyleBtn = document.getElementById('start-random-freestyle-btn');
+    if (startRandomFreestyleBtn) {
+        startRandomFreestyleBtn.addEventListener('click', function(e) {
+            playSound('start');
+            setTimeout(() => game.startRandomFreestyle(), 80);
+        });
+        startRandomFreestyleBtn.classList.add('btn-anim');
+    }
+    
+    document.querySelectorAll('.btn-ui').forEach(btn => {
+        btn.classList.add('btn-anim');
+        btn.addEventListener('click', function(e) {
+            if (this.classList.contains('clicked')) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            this.classList.add('clicked');
+            setTimeout(() => {
+                this.classList.remove('clicked');
+            }, 300);
+        });
+    });
+
+    document.getElementById('critical-overlay').addEventListener('click', function(e) {
+        if (e.target === this) {
+            playSound('move');
+            setTimeout(() => {
+                document.getElementById('critical-overlay').style.display='none';
+                game.gameEnded = false;
+            }, 80);
+        }
+    });
+
+    document.getElementById('mate-banner').addEventListener('click', function(e) {
+        if (e.target === this) {
+            playSound('move');
+            setTimeout(() => {
+                document.getElementById('mate-banner').style.display='none';
+                game.gameEnded = false;
+            }, 80);
+        }
+    });
+
+    document.getElementById('promotion-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            hidePromotionModal();
+        }
+    });
+
+    document.addEventListener('click', function (e) {
+        const sidebar = document.getElementById('sidebar');
+        const sidebarButton = document.querySelector('button[onclick="game.toggleSidebar()"]');
+
+        if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && !sidebarButton.contains(e.target)) {
+            game.toggleSidebar();
+        }
+    });
+});
+</script>
+<!-- CONTENEDOR DE AUTENTICACIÓN (visible en la UI) -->
+<!-- Eliminado el botón de Login y la lógica de autenticación -->
+<!-- Solo se mantiene el contenedor de perfil oculto -->
+<div id="auth-container" style="position: fixed; top: 10px; right: 10px; z-index: 1000; display: flex; align-items: center; gap: 10px;">
+  <div id="user-profile-info" style="display: none; align-items: center; gap: 8px; background: rgba(15, 15, 20, 0.9); padding: 5px 10px; border-radius: 4px; border: 1px solid #333;">
+    <img id="user-photo" src="" alt="User Photo" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
+    <span id="user-name" style="color: #eee; font-size: 13px; font-weight: bold;"></span>
+    <button id="logout-btn" class="btn-ui btn-small" style="margin-left: 5px;">
+      Logout
+    </button>
+  </div>
+</div>
+
+<!-- SDK DE FIREBASE (MODO COMPAT - SIN ERRORES) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<!-- INICIALIZACIÓN Y LÓGICA MÍNIMA -->
+<script>
+  // Configuración CORREGIDA (¡NO TIENE ESPACIOS AL FINAL!)
+  const firebaseConfig = {
+    apiKey: "AIzaSyAOMcKJYHTjEQ9omkmhDAkwPgXURK3zxhc",
+    authDomain: "gm-2000.firebaseapp.com",
+    databaseURL: "https://gm-2000-default-rtdb.firebaseio.com",
+    projectId: "gm-2000",
+    storageBucket: "gm-2000.firebasestorage.app",
+    messagingSenderId: "982790855660",
+    appId: "1:982790855660:web:cb0eecd55327c1ea35fec9"
+  };
+
+  // Inicializar Firebase
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // Botones
+  // Eliminado loginBtn y lógica de login con Google
+  const userProfileInfo = document.getElementById('user-profile-info');
+  const userPhoto = document.getElementById('user-photo');
+  const userName = document.getElementById('user-name');
+  const logoutBtn = document.getElementById('logout-btn');
+
+  // Logout
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut();
+  });
+
+  // Escuchar estado de sesión
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      console.log("Usuario autenticado:", user.email);
+      // Eliminado loginBtn.style.display
+      userProfileInfo.style.display = 'flex';
+      userPhoto.src = user.photoURL || '';
+      userName.innerText = user.displayName || user.email;
+    } else {
+      // Eliminado loginBtn.style.display
+      userProfileInfo.style.display = 'none';
+    }
+  });
+</script>
