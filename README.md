@@ -1,4 +1,5 @@
-# ♔ GM2000 ♚ - Sistema de Entrenamiento de Ajedrez para Jugadores Avanzados
+# ♔ GM-<img width="4965" height="5347" alt="Logo Pro (1)" src="https://github.com/user-attachments/assets/d9c0c831-0f74-4b89-b280-c795eb058665" />
+2000 ♚ - Sistema de Entrenamiento de Ajedrez para Jugadores Avanzados
 
 ## 📌 Descripción
 
